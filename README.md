@@ -2,7 +2,6 @@
 
 A CLI tool to use Saferwall to download samples, scan or re-scan new samples.
 
-
 ## Install
 
 You can either download pre-built binaries or build the tool yourself.
