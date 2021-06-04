@@ -2,6 +2,16 @@
 
 A CLI tool to use Saferwall to download samples, scan or re-scan new samples.
 
+
+## Install
+
+You can either download pre-built binaries or build the tool yourself.
+
+```sh
+
+go install github.com/saferwall/saferwall-cli
+
+```
 ## Usage
 
 To use the CLI tool you need a [Saferwall](https://saferwall.com) account in order to authenticate
