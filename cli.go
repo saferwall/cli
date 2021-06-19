@@ -179,9 +179,9 @@ func downloadFile(cmd *cobra.Command, args []string) {
 func main() {
 
 	var rootCmd = &cobra.Command{
-		Use:   "sfwcli",
+		Use:   "saferwall-cli",
 		Short: "A cli tool for saferwall.com",
-		Long:  "A cli tool to interfact with saferwall APIs (scan, rescan, upload, ...)",
+		Long:  WelcomeMessage,
 		Run: func(cmd *cobra.Command, args []string) {
 		},
 	}
@@ -191,7 +191,7 @@ func main() {
 		Short: "Vesion number",
 		Long:  "Print the version number",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Print("You are using version 0.0.1")
+			fmt.Print("You are using version 0.2.0")
 		},
 	}
 
@@ -243,9 +243,8 @@ func main() {
 	username = os.Getenv(DefaultAuthUsername)
 	password = os.Getenv(DefaultAuthPassword)
 	if username == "" || password == "" {
-		log.Fatal("SAFERWALL_AUTH_USERNAME or SAFERWALL_AUTH_PASSWORD env variable are not set.")
+		fmt.Println("SAFERWALL_AUTH_USERNAME or SAFERWALL_AUTH_PASSWORD env variable are not set.")
 	}
-
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
 	}

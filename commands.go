@@ -5,13 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
-	"mime/multipart"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"time"
 )
@@ -20,34 +16,6 @@ const (
 	fileURL = "https://api.saferwall.com/v1/files/"
 	authURL = "https://api.saferwall.com/v1/auth/login/"
 )
-
-func newfileUploadRequest(uri, fieldname, filename string) (*http.Request, error) {
-	file, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	body := &bytes.Buffer{}
-	writer := multipart.NewWriter(body)
-	part, err := writer.CreateFormFile(fieldname, filepath.Base(filename))
-	if err != nil {
-		return nil, err
-	}
-	_, err = io.Copy(part, file)
-	if err != nil {
-		return nil, err
-	}
-
-	err = writer.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest("POST", uri, body)
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-	return req, err
-}
 
 func login(username, password string) (string, error) {
 	requestBody, err := json.Marshal(map[string]string{
@@ -89,31 +57,6 @@ func login(username, password string) (string, error) {
 	}
 
 	return res["token"], nil
-}
-
-func upload(filepath string, authToken string) {
-
-	// Create a new file upload request.
-	request, err := newfileUploadRequest(fileURL, "file", filepath)
-	check(err)
-
-	// Add our auth token.
-	request.Header.Set("Cookie", "JWTCookie="+authToken)
-
-	// Perform the http post request.
-	client := &http.Client{}
-	resp, err := client.Do(request)
-	check(err)
-
-	// Read the response.
-	body := &bytes.Buffer{}
-	_, err = body.ReadFrom(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	resp.Body.Close()
-	fmt.Println(body)
 }
 
 func rescan(sha256, authToken string) error {
@@ -215,43 +158,4 @@ func isFileFoundInDB(sha256, token string) bool {
 		}
 	}
 	return false
-}
-
-func listAllFilesInDb(authToken string) ([]string, error) {
-
-	var listSha256 []string
-	url := fileURL + "?fields=sha256"
-	request, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		log.Fatal(err)
-		return listSha256, err
-	}
-	request.Header.Set("Cookie", "JWTCookie="+authToken)
-
-	// Perform the http post request.
-	client := &http.Client{}
-	resp, err := client.Do(request)
-	if err != nil {
-		log.Fatal(err)
-		return listSha256, err
-	}
-
-	// Read the response.
-	body := &bytes.Buffer{}
-	_, err = body.ReadFrom(resp.Body)
-	if err != nil {
-		log.Fatal(err)
-		return listSha256, err
-	}
-
-	var shaMap []map[string]string
-	err = json.Unmarshal(body.Bytes(), &shaMap)
-	check(err)
-
-	for _, v := range shaMap {
-		listSha256 = append(listSha256, v["sha256"])
-	}
-
-	resp.Body.Close()
-	return listSha256, nil
 }
