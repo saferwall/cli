@@ -14,7 +14,7 @@ jobs:
         goos: [linux, darwin, windows]
         goarch: [amd64]
     steps:
-      - uses: wangyoucao577/go-release-action@v1.16
+      - uses: wangyoucao577/go-release-action@v1.18
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           goos: ${{ matrix.goos }}
