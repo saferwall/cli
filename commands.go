@@ -1,4 +1,4 @@
-package main
+package sfwcli
 
 import (
 	"bytes"
@@ -17,7 +17,8 @@ const (
 	authURL = "https://api.saferwall.com/v1/auth/login/"
 )
 
-func login(username, password string) (string, error) {
+// Login performs API authentification.
+func Login(username, password string) (string, error) {
 	requestBody, err := json.Marshal(map[string]string{
 		"username": username,
 		"password": password,
@@ -59,7 +60,8 @@ func login(username, password string) (string, error) {
 	return res["token"], nil
 }
 
-func rescan(sha256, authToken string) error {
+// Rescan will re-scan a file.
+func Rescan(sha256, authToken string) error {
 
 	log.Printf("rescanning %s\n", sha256)
 
@@ -94,7 +96,8 @@ func rescan(sha256, authToken string) error {
 	return nil
 }
 
-func scan(sha256 string, authToken string) error {
+// Scan will scan a file.
+func Scan(sha256 string, authToken string) error {
 
 	log.Printf("Scanning %s", sha256)
 
@@ -124,7 +127,8 @@ func scan(sha256 string, authToken string) error {
 	return nil
 }
 
-func isFileFoundInDB(sha256, token string) bool {
+// IsFileFOundInDB checks if a given sha256 is present in our database.
+func IsFileFoundInDB(sha256, token string) bool {
 
 	url := fileURL + sha256 + "?fields=status"
 	resp, err := http.Get(url)

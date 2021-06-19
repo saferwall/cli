@@ -13,6 +13,8 @@ import (
 	"github.com/atotto/clipboard"
 	"github.com/joho/godotenv"
 	"github.com/spf13/cobra"
+
+	sfwcli "github.com/saferwall/saferwall-cli"
 )
 
 const (
@@ -47,32 +49,38 @@ func scanFile(cmd *cobra.Command, args []string) {
 	})
 
 	// Obtain a token.
-	token, err := login(username, password)
-	check(err)
+	token, err := sfwcli.Login(username, password)
+	if err != nil {
+		log.Fatal("API authentification failed with error :", err)
+		return
+	}
 
 	// Upload files
 	for _, filename := range fileList {
 
 		// Get sha256
 		data, err := ioutil.ReadFile(filename)
-		check(err)
-		sha256 := getSha256(data)
+		if err != nil {
+			log.Fatal("readfile failed with error :", err)
+			return
+		}
+		sha256 := sfwcli.SHA256(data)
 
 		// Do we have the file in S3.
-		if !isFileFoundInObjStorage(sha256) {
-			uploadObject(bucket, region, sha256, filename)
+		if !sfwcli.IsFileFoundInObjStorage(sha256) {
+			sfwcli.UploadObject(bucket, region, sha256, filename)
 		}
 
 		// Check if we the file exists in the DB.
-		if !isFileFoundInDB(sha256, token) {
-			scan(sha256, token)
+		if !sfwcli.IsFileFoundInDB(sha256, token) {
+			sfwcli.Scan(sha256, token)
 			time.Sleep(timeout * time.Second)
 			continue
 		}
 
 		// Force rescan the file?.
 		if forceRescan {
-			rescan(sha256, token)
+			sfwcli.Rescan(sha256, token)
 			time.Sleep(timeout * time.Second)
 		}
 	}
@@ -83,10 +91,10 @@ func s3upload(cmd *cobra.Command, args []string) {
 	filePath := args[0]
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
-		exitErrorf("%s does not exist", filePath)
+		sfwcli.ExitWithError("%s does not exist", filePath)
 	}
 
-	objKeys := listObject(bucket, region, false)
+	objKeys := sfwcli.ListObject(bucket, region, false)
 
 	// Walk over directory.
 	fileList := []string{}
@@ -105,10 +113,10 @@ func s3upload(cmd *cobra.Command, args []string) {
 			fmt.Printf("failed to read file %s", filename)
 			continue
 		}
-		key := getSha256(dat)
-		found := stringInSlice(key, objKeys)
+		key := sfwcli.SHA256(dat)
+		found := sfwcli.StringInSlice(key, objKeys)
 		if !found {
-			uploadObject(bucket, region, key, filename)
+			sfwcli.UploadObject(bucket, region, key, filename)
 		} else {
 			fmt.Printf("file name %s already in s3 bucket", filename)
 		}
@@ -120,15 +128,19 @@ func s3upload(cmd *cobra.Command, args []string) {
 func rescanFile(cmd *cobra.Command, args []string) {
 
 	// Obtain a token.
-	token, err := login(username, password)
-	check(err)
+	token, err := sfwcli.Login(username, password)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	clipContent, err := clipboard.ReadAll()
-	check(err)
+	if err != nil {
+		log.Fatal("rescan failed with error : ", err)
+	}
 
 	shaList := strings.Split(clipContent, "\r\n")
 	for _, sha256 := range shaList {
-		rescan(sha256, token)
+		sfwcli.Rescan(sha256, token)
 
 		// Wait for file to be scanned.
 		time.Sleep(timeout * time.Second)
@@ -143,11 +155,11 @@ func processAuthTokens() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
-	username := os.Getenv(DefaultAuthUsername)
-	password := os.Getenv(DefaultAuthPassword)
-	err = SetAuthentificationData(username, password)
+	username := os.Getenv(sfwcli.DefaultAuthUsername)
+	password := os.Getenv(sfwcli.DefaultAuthPassword)
+	err = sfwcli.SetAuthentificationData(username, password)
 	if err != nil {
-		check(err)
+		log.Fatal("API authentification failed with error :", err)
 	}
 }
 
@@ -155,7 +167,9 @@ func processAuthTokens() {
 func downloadFile(cmd *cobra.Command, args []string) {
 
 	clipContent, err := clipboard.ReadAll()
-	check(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	shaList := strings.Split(clipContent, "\r\n")
 	for _, sha256 := range shaList {
@@ -167,7 +181,7 @@ func downloadFile(cmd *cobra.Command, args []string) {
 		}
 		defer f.Close()
 
-		err = downloadObject(bucket, region, sha256, f)
+		err = sfwcli.DownloadObject(bucket, region, sha256, f)
 		if err != nil {
 			log.Println(err)
 			continue
@@ -181,7 +195,7 @@ func main() {
 	var rootCmd = &cobra.Command{
 		Use:   "saferwall-cli",
 		Short: "A cli tool for saferwall.com",
-		Long:  WelcomeMessage,
+		Long:  sfwcli.WelcomeMessage,
 		Run: func(cmd *cobra.Command, args []string) {
 		},
 	}
@@ -240,8 +254,8 @@ func main() {
 	// load config
 	processAuthTokens()
 	// Get credentials.
-	username = os.Getenv(DefaultAuthUsername)
-	password = os.Getenv(DefaultAuthPassword)
+	username = os.Getenv(sfwcli.DefaultAuthUsername)
+	password = os.Getenv(sfwcli.DefaultAuthPassword)
 	if username == "" || password == "" {
 		fmt.Println("SAFERWALL_AUTH_USERNAME or SAFERWALL_AUTH_PASSWORD env variable are not set.")
 	}

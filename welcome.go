@@ -1,4 +1,4 @@
-package main
+package sfwcli
 
 // WelcomeMessage is displayed when the file is run.
 const WelcomeMessage = `

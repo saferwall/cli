@@ -1,4 +1,4 @@
-package main
+package sfwcli
 
 import (
 	"errors"
@@ -14,14 +14,21 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
-func uploadObject(bucket, region, key, filename string) error {
+const (
+	bucket  = "saferwall-samples"
+	region  = "us-east-1"
+	timeout = 0
+)
+
+// UploadObject uploads objects to S3 bucket.
+func UploadObject(bucket, region, key, filename string) error {
 	if bucket == "" || region == "" || key == "" || filename == "" {
 		return errors.New("bucket, key and file name required")
 	}
 
 	file, err := os.Open(filename)
 	if err != nil {
-		exitErrorf("Unable to open file %q, %v", err)
+		ExitWithError("Unable to open file %q, %v", err)
 	}
 
 	defer file.Close()
@@ -32,7 +39,7 @@ func uploadObject(bucket, region, key, filename string) error {
 		Region: aws.String(region)},
 	)
 	if err != nil {
-		exitErrorf("Unable to create new session %v", err)
+		ExitWithError("Unable to create new session %v", err)
 	}
 
 	// Setup the S3 Upload Manager. Also see the SDK doc for the Upload Manager
@@ -68,7 +75,8 @@ func uploadObject(bucket, region, key, filename string) error {
 	return nil
 }
 
-func listObject(bucket, region string, verbose bool) []string {
+// ListObject will list any object present in a bucket.
+func ListObject(bucket, region string, verbose bool) []string {
 	// Initialize a session in us-west-2 that the SDK will use to load
 	// credentials from the shared credentials file ~/.aws/credentials.
 	sess, err := session.NewSession(&aws.Config{
@@ -88,7 +96,7 @@ func listObject(bucket, region string, verbose bool) []string {
 	for {
 		resp, err := svc.ListObjectsV2(query)
 		if err != nil {
-			exitErrorf("Unable to list items in bucket %q, %v", bucket, err)
+			ExitWithError("Unable to list items in bucket %q, %v", bucket, err)
 		}
 
 		for _, item := range resp.Contents {
@@ -116,7 +124,9 @@ func listObject(bucket, region string, verbose bool) []string {
 	return objKeys
 }
 
-func isFileFoundInObjStorage(sha256 string) bool {
+// IsFileFoundInObjStorage handles the case where a file is present in an S3
+// bucket.
+func IsFileFoundInObjStorage(sha256 string) bool {
 
 	// Initialize a session in us-west-2 that the SDK will use to load
 	// credentials from the shared credentials file ~/.aws/credentials.
@@ -142,7 +152,8 @@ func isFileFoundInObjStorage(sha256 string) bool {
 	return true
 }
 
-func downloadObject(bucket, region, key string, w io.WriterAt) error {
+// DownloadObject downloads objects with a key from an S3 bucket.
+func DownloadObject(bucket, region, key string, w io.WriterAt) error {
 	// Initialize a session in us-west-2 that the SDK will use to load
 	// credentials from the shared credentials file ~/.aws/credentials.
 	sess, err := session.NewSession(&aws.Config{

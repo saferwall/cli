@@ -1,4 +1,4 @@
-package main
+package sfwcli
 
 import (
 	"crypto/sha256"
@@ -23,18 +23,21 @@ func check(e error) {
 	}
 }
 
-func getSha256(b []byte) string {
+// SHA256 calculates the SHA256 hash of a given byte slice.
+func SHA256(b []byte) string {
 	h := sha256.New()
 	h.Write(b)
 	return hex.EncodeToString(h.Sum(nil))
 }
 
-func exitErrorf(msg string, args ...interface{}) {
+// ExitWithError will trigger an print a message to stdout and exit.
+func ExitWithError(msg string, args ...interface{}) {
 	fmt.Fprintf(os.Stderr, msg+"\n", args...)
 	os.Exit(1)
 }
 
-func stringInSlice(a string, list []string) bool {
+// StringInSlice checks if a string is in a list.
+func StringInSlice(a string, list []string) bool {
 	for _, b := range list {
 		if b == a {
 			return true
