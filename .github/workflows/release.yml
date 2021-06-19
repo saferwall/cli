@@ -20,4 +20,4 @@ jobs:
           goos: ${{ matrix.goos }}
           goarch: ${{ matrix.goarch }}
           binary_name: "saferwall-cli"
-          extra_files: LICENSE README.md.md
+          extra_files: LICENSE README.md
