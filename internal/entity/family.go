@@ -19,7 +19,3 @@ type Family struct {
 	References []string `yaml:"references"`
 	Samples    []Sample `yaml:"samples"`
 }
-
-type Corpus struct {
-	Families []Family `yaml:"families"`
-}

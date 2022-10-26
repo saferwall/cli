@@ -93,3 +93,11 @@ func Exists(name string) bool {
 	}
 	return true
 }
+
+// MkDir create a directory if it does not exists.
+func MkDir(name string) bool {
+	if !Exists(name) {
+		return os.Mkdir(name, 0755) == nil
+	}
+	return true
+}

@@ -1,4 +1,4 @@
-# BlackCat
+# {{ .Fam.Name }}
 
 * First seen: {{ .Fam.FirstSeen }}
 * Aliases: {{- $aliases := .Fam.Aliases}}
@@ -51,4 +51,3 @@
 {{- range .Fam.References }}
 - [{{ . }}]({{ . }})
 {{- end }}
-
