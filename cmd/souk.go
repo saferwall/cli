@@ -8,10 +8,12 @@ import (
 	"bytes"
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
+	"strings"
 
 	"github.com/Masterminds/sprig"
 
@@ -77,7 +79,7 @@ func init() {
 func addFamilyToSouk(familyYamlPath string) error {
 	log.Printf("processing %s", familyYamlPath)
 
-	familyData, err := ioutil.ReadFile(familyYamlPath)
+	familyData, err := util.ReadAll(familyYamlPath)
 	if err != nil {
 		log.Fatalf("failed to read yaml file, err: %v ", err)
 	}
@@ -94,6 +96,12 @@ func addFamilyToSouk(familyYamlPath string) error {
 	}
 
 	files := map[string]entity.File{}
+	m := make(map[string]map[string]bool)
+
+	m["category"] = make(map[string]bool)
+	m["fileformat"] = make(map[string]bool)
+	m["platform"] = make(map[string]bool)
+
 	for _, sample := range family.Samples {
 		var file entity.File
 
@@ -106,9 +114,47 @@ func addFamilyToSouk(familyYamlPath string) error {
 		}
 
 		files[sample.SHA256] = file
+
+		if _, ok := m["category"][sample.Category]; !ok {
+			m["category"][sample.Category] = false
+		}
+		if _, ok := m["platform"][sample.Platform]; !ok {
+			m["platform"][sample.Platform] = false
+		}
+		if _, ok := m["fileformat"][sample.FileFormat]; !ok {
+			m["fileformat"][sample.FileFormat] = false
+		}
+
+		// Update each criteria to link against the corpus directory.
+		if !m["category"][sample.Category] {
+			err = generateLink("category", sample.Category, family.Name)
+			if err != nil {
+				log.Fatalf("failed to generate criteria link: %v", err)
+			}
+		}
+
+		if !m["platform"][sample.Platform] {
+			err = generateLink("platform", sample.Platform, family.Name)
+			if err != nil {
+				log.Fatalf("failed to generate criteria link: %v", err)
+
+			}
+		}
+
+		if !m["fileformat"][sample.FileFormat] {
+			err = generateLink("fileformat", sample.FileFormat, family.Name)
+			if err != nil {
+				log.Fatalf("failed to generate criteria link: %v", err)
+
+			}
+		}
+
+		m["category"][sample.Category] = true
+		m["platform"][sample.Platform] = true
+		m["fileformat"][sample.FileFormat] = true
 	}
 
-	// generate markdown for corpus.
+	// Generate family markdown in corpus.
 	err = generateCorpusMarkdown(family, files)
 	if err != nil {
 		log.Fatal(err)
@@ -132,7 +178,7 @@ func generateMalwareSoukDB() error {
 	for _, yamlFamily := range yamlCorpus {
 		log.Printf("processing %s", yamlFamily)
 
-		familyData, err := ioutil.ReadFile(yamlFamily)
+		familyData, err := util.ReadAll(yamlFamily)
 		if err != nil {
 			log.Fatalf("failed to read yaml file, err: %v ", err)
 		}
@@ -175,7 +221,7 @@ func generateMalwareSoukDB() error {
 
 func initMalwareSouk() error {
 	soukYamlPath := filepath.Join(soukFlag, "souk.yaml")
-	soukYamlCfg, err := ioutil.ReadFile(soukYamlPath)
+	soukYamlCfg, err := util.ReadAll(soukYamlPath)
 	if err != nil {
 		log.Printf("failed to read souk yaml file, err: %v ", err)
 		return err
@@ -191,7 +237,7 @@ func initMalwareSouk() error {
 	for k, v := range m["criteria"].(map[interface{}]interface{}) {
 		criteriaName := k.(string)
 		criteriaDirName := filepath.Join(soukFlag, criteriaName)
-		os.Remove(criteriaDirName)
+		os.RemoveAll(criteriaDirName)
 		if !util.MkDir(criteriaDirName) {
 			return err
 		}
@@ -218,7 +264,7 @@ func initMalwareSouk() error {
 
 			// drop the README.md
 			filename := filepath.Join(subCriteriaDirName, "README.md")
-			data := fmt.Sprintf("# Browser Corpus by %s / %s:", criteriaName, subCriteriaName)
+			data := fmt.Sprintf("# Browse corpus by %s / %s:\n\n", criteriaName, subCriteriaName)
 			r := bytes.NewBuffer([]byte(data))
 			_, err = util.WriteBytesFile(filename, r)
 			if err != nil {
@@ -324,6 +370,55 @@ func generateCategoryMarkdown(fam entity.Family, files map[string]entity.File) e
 	// write the family README.
 	corpusFamilyReadme := filepath.Join(corpusFamilyPath, "README.md")
 	_, err := util.WriteBytesFile(corpusFamilyReadme, body)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func generateLink(criteria, subCriteria, familyName string) error {
+
+	path := filepath.Join(soukFlag, criteria, subCriteria, "README.md")
+	readmeData, err := util.ReadAll(path)
+	if err != nil {
+		return err
+	}
+
+	r := regexp.MustCompile(`# Browse corpus by .*\n\n([.\s\S]+)`)
+	match := r.FindStringSubmatch(string(readmeData))
+
+	var entries []string
+	entry := fmt.Sprintf("- [%s](/corpus/%s/)", familyName, familyName)
+
+	if len(match) == 0 {
+		// This is the first time we are filling this file.
+		entries = append(entries, entry)
+	} else {
+		entries = strings.Split(match[1], "\n")
+		entries = append(entries, entry)
+	}
+
+	entries = util.UniqueSlice(entries)
+	sort.Strings(entries)
+
+	// Generate the new content.
+	newContent := ""
+	for _, entry := range entries {
+		if entry != "" {
+			newContent += entry + "\n"
+		}
+	}
+
+	newReadmeData := ""
+	if len(match) == 0 {
+		// This is the first time we are filling this file.
+		newReadmeData = string(readmeData) + newContent
+	} else {
+		newReadmeData = strings.ReplaceAll(string(readmeData), match[1], newContent)
+	}
+
+	_, err = util.WriteBytesFile(path, bytes.NewBufferString(newReadmeData))
 	if err != nil {
 		return err
 	}
