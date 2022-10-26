@@ -252,3 +252,32 @@ func ListFiles(authToken string) ([]string, error) {
 	resp.Body.Close()
 	return listSha256, nil
 }
+
+func Download(sha256, authToken string) (*bytes.Buffer, error) {
+
+	url := fileURL + sha256 + "/download"
+	request, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Cookie", "JWTCookie="+authToken)
+
+	// Perform the http post request.
+	client := &http.Client{}
+	resp, err := client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	// Read the response.
+	body := &bytes.Buffer{}
+	_, err = body.ReadFrom(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	defer resp.Body.Close()
+	return body, nil
+}

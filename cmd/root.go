@@ -48,6 +48,5 @@ func Execute() error {
 func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(scanCmd)
-	rootCmd.AddCommand(genCmd)
-
+	rootCmd.AddCommand(downloadCmd)
 }

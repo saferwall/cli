@@ -26,19 +26,22 @@ const (
 	// DefaultAuthPassword represents the key for reading password
 	// from env variables.
 	DefaultAuthPassword = "SAFERWALL_AUTH_PASSWORD"
-
-	bucket    = "saferwall-samples"
-	region    = "us-east-1"
-	asyncScan = false
 )
 
 // Used for flags.
 var filePath string
+var forceRescanFlag bool
+var asyncScanFlag bool
 
 func init() {
-	scanCmd.Flags().StringVarP(&filePath, "filePath", "f", "",
+	scanCmd.Flags().StringVarP(&filePath, "path", "p", "",
 		"File name or path to scan (required)")
-	scanCmd.MarkFlagRequired("filePath")
+	scanCmd.Flags().BoolVarP(&forceRescanFlag, "force", "f", false,
+		"Force rescan the file if it exists (default=false)")
+	scanCmd.Flags().BoolVarP(&asyncScanFlag, "async", "a", false,
+		"Scan files in parallel (default=false)")
+	scanCmd.MarkFlagRequired("path")
+
 }
 
 func loadEnv() (username, password string) {
@@ -175,6 +178,6 @@ var scanCmd = &cobra.Command{
 			log.Fatalf("failed to login to saferwall web service")
 		}
 
-		scanFile(filePath, token, asyncScan, false)
+		scanFile(filePath, token, asyncScanFlag, forceRescanFlag)
 	},
 }
