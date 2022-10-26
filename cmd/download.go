@@ -19,7 +19,7 @@ var outputFlag string
 func init() {
 	downloadCmd.Flags().StringVarP(&sha256Flag, "hash", "", "",
 		"SHA256 hash to download (required)")
-	downloadCmd.Flags().StringVarP(&outputFlag, "output", "o", "",
+	downloadCmd.Flags().StringVarP(&outputFlag, "output", "o", "./",
 		"Destination directory where to save samples. (default=current dir)")
 }
 
@@ -51,11 +51,7 @@ func download(sha256, token, destPath string) error {
 	}
 
 	filename := sha256 + ".zip"
-	if destPath == "" {
-		destPath = filename
-	} else {
-		destPath = filepath.Join(destPath, filename)
-	}
+	destPath = filepath.Join(destPath, filename)
 
 	_, err = util.WriteBytesFile(destPath, data)
 	if err != nil {

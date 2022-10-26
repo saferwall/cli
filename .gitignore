@@ -32,3 +32,6 @@ cli
 
 # Private data
 private/
+
+# Samples
+samples/

@@ -36,7 +36,7 @@ var versionCmd = &cobra.Command{
 	Short: "Vesion number",
 	Long:  "Print the version number",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("You are using version 0.0.3")
+		fmt.Println("You are using version 0.2.0")
 	},
 }
 
@@ -49,4 +49,5 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(downloadCmd)
+	rootCmd.AddCommand(genCmd)
 }
