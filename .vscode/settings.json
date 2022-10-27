@@ -1,0 +1,10 @@
+{
+    "files.exclude": {
+        "__debug_bin": true,
+        "cli": true,
+        "cli.exe": true,
+        "samples": true,
+        "LICENSE": true,
+        "go.sum": true,
+    }
+}

@@ -13,6 +13,7 @@
 *.so
 *.dylib
 cli
+__debug_bin
 
 # Test binary, built with `go test -c`
 *.test
@@ -32,3 +33,6 @@ cli
 
 # Private data
 private/
+
+# Samples
+samples/

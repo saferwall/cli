@@ -55,6 +55,31 @@ func GetSha256(b []byte) string {
 	return hex.EncodeToString(h.Sum(nil))
 }
 
+// ReadAll reads the entire file into memory.
+func ReadAll(filePath string) ([]byte, error) {
+	// Start by getting a file descriptor over the file
+	file, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	// Get the file size to know how much we need to allocate
+	fileinfo, err := file.Stat()
+	if err != nil {
+		return nil, err
+	}
+	filesize := fileinfo.Size()
+	buffer := make([]byte, filesize)
+
+	// Read the whole binary
+	_, err = file.Read(buffer)
+	if err != nil {
+		return nil, err
+	}
+	return buffer, nil
+}
+
 // WriteBytesFile write Bytes to a File.
 func WriteBytesFile(filename string, r io.Reader) (int, error) {
 
@@ -92,4 +117,35 @@ func Exists(name string) bool {
 		}
 	}
 	return true
+}
+
+// MkDir create a directory if it does not exists.
+func MkDir(name string) bool {
+	if !Exists(name) {
+		return os.Mkdir(name, 0755) == nil
+	}
+	return true
+}
+
+
+// StringInSlice returns whether or not a string exists in a slice.
+func StringInSlice(a string, list []string) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+// UniqueSlice delete duplicate strings from an array of strings.
+func UniqueSlice(slice []string) []string {
+	cleaned := []string{}
+
+	for _, value := range slice {
+		if !StringInSlice(value, cleaned) {
+			cleaned = append(cleaned, value)
+		}
+	}
+	return cleaned
 }

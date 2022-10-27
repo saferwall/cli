@@ -12,46 +12,62 @@ go install github.com/saferwall/saferwall-cli
 
 ## Usage
 
-To use the CLI tool you need a [Saferwall](https://saferwall.com) account in order to authenticate
-yourself.
+To use the CLI tool you need a [Saferwall](https://saferwall.com) account in order to authenticate yourself.
 
-The CLI tool reads your username and password from a local `.env` file.
+The CLI tool reads your username and password from a local `.env` file or from your OS environment variable.
 
 ```sh
 SAFERWALL_AUTH_USERNAME=username
 SAFERWALL_AUTH_PASSWORD=password
 ```
 
+
+```sh
+saferwall-cli - Saferwall command line tool
+
+	███████╗ █████╗ ███████╗███████╗██████╗ ██╗    ██╗ █████╗ ██╗     ██╗          ██████╗██╗     ██╗
+	██╔════╝██╔══██╗██╔════╝██╔════╝██╔══██╗██║    ██║██╔══██╗██║     ██║         ██╔════╝██║     ██║
+	███████╗███████║█████╗  █████╗  ██████╔╝██║ █╗ ██║███████║██║     ██║         ██║     ██║     ██║
+	╚════██║██╔══██║██╔══╝  ██╔══╝  ██╔══██╗██║███╗██║██╔══██║██║     ██║         ██║     ██║     ██║
+	███████║██║  ██║██║     ███████╗██║  ██║╚███╔███╔╝██║  ██║███████╗███████╗    ╚██████╗███████╗██║
+	╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝╚═╝  ╚═╝ ╚══╝╚══╝ ╚═╝  ╚═╝╚══════╝╚══════╝     ╚═════╝╚══════╝╚═╝
+
+
+saferwall-cli allows you to interact with the saferwall API. You can
+upload, scan samples from your drive, or download samples.
+For more details see the github repo at https://github.com/saferwall
+
+Usage:
+  saferwall-cli [flags]
+  saferwall-cli [command]
+
+Available Commands:
+  completion  generate the autocompletion script for the specified shell
+  download    Download a sample given its SHA256 hash.
+  gen         Generate malware souk markdown for the entire corpus
+  help        Help about any command
+  scan        Submit a scan request of a file using its hash
+  version     Version number
+
+Flags:
+  -h, --help   help for saferwall-cli
+
+Use "saferwall-cli [command] --help" for more information about a command.
+```
+
+
 ### Download
 
 You can download files using their SHA256 hash and specify an output folder, you can also download a batch of samples by copying their SHA256 hash to the clipboard.
 
 ```sh
-cli download 0001cb47c8277e44a09543291d95559886b9c2da195bd78fdf108775ac91ac53 -o tmp/
+cli download --hash 0001cb47c8277e44a09543291d95559886b9c2da195bd78fdf108775ac91ac53
 ```
 
-### Scan or Rescan
+### Scan
 
 You can scan or rescan files using the scan command.
 
 ```sh
-cli [re]scan /samples/putty.exe
-```
-
-For the rest of the commands you can use `help` to show a usage guide.
-
-```sh
-A cli tool to interfact with saferwall APIs (scan, rescan, upload, ...)
-Usage:
-  saferwall-cli [flags]
-  saferwall-cli [command]
-Available Commands:
-  download    Download file
-  help        Help about any command
-  rescan      Resccan file
-  s3upload    S3 upload
-  scan        Scan file
-  version     Vesion number
-Flags:
-  -h, --help   help for saferwall-cli
+cli scan -p /samples/0001cb47c8277e44a09543291d95559886b9c2da195bd78fdf108775ac91ac53
 ```

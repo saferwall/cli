@@ -33,10 +33,10 @@ For more details see the github repo at https://github.com/saferwall
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Vesion number",
+	Short: "Version number",
 	Long:  "Print the version number",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("You are using version 0.0.3")
+		fmt.Println("You are using version 0.2.0")
 	},
 }
 
@@ -48,5 +48,6 @@ func Execute() error {
 func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(scanCmd)
+	rootCmd.AddCommand(soukCmd)
 	rootCmd.AddCommand(downloadCmd)
 }
