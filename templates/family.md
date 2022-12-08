@@ -1,7 +1,7 @@
 # {{ .Fam.Name }}
 
 * First seen: {{ .Fam.FirstSeen }}
-* Aliases: {{- $aliases := .Fam.Aliases}}
+* Aliases: {{ $aliases := .Fam.Aliases}}
 {{- range .Fam.Aliases }}
  {{- . }}
 {{- if ne . ($aliases | last) }}, {{- end }}

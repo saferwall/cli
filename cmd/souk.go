@@ -92,7 +92,11 @@ func addFamilyToSouk(familyYamlPath string) error {
 
 	corpusFamily := filepath.Join(soukFlag, "corpus", family.Name)
 	if !util.MkDir(corpusFamily) {
-		log.Fatalf("failed to create dir: %v", err)
+		log.Fatalf("failed to create family dir in corpus: %v", err)
+	}
+	corpusFamilySamples := filepath.Join(corpusFamily, "samples")
+	if !util.MkDir(corpusFamilySamples) {
+		log.Fatalf("failed to create samples dir: %v", err)
 	}
 
 	files := map[string]entity.File{}

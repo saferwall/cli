@@ -45,10 +45,8 @@ func init() {
 }
 
 func loadEnv() (username, password string) {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	_ = godotenv.Load()
+
 	username = os.Getenv(DefaultAuthUsername)
 	password = os.Getenv(DefaultAuthPassword)
 	if len(username) == 0 || len(password) == 0 {
