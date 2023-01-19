@@ -120,7 +120,7 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 		return nil
 	}
 
-	// Sequencially scan the files.
+	// Sequentially scan the files.
 	for _, filename := range fileList {
 		// Get sha256
 		data, err := ioutil.ReadFile(filename)
@@ -134,28 +134,28 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 		// Check if we the file exists in the DB.
 		exists, err := webapi.FileExists(sha256)
 		if err != nil {
-			log.Fatalf("failed to check existance of file: %v", filename)
+			log.Fatalf("failed to check existence of file: %v", filename)
 		}
 
 		// Upload the file to be scanned, this will automatically
-		// triger a scan request.
+		// trigger a scan request.
 		if !exists {
 			body, err := webapi.Upload(filename, token)
 			if err != nil {
 				log.Fatalf("failed to upload file: %v", filename)
 			}
 			log.Print(body)
+			time.Sleep(15 * time.Second)
 		} else {
-			// Force rescan the file
+			// Force re-scan the file
 			if forceRescan {
 				err = webapi.Rescan(sha256, token)
 				if err != nil {
-					log.Fatalf("failed to rescan file: %v", filename)
+					log.Fatalf("failed to re-scan file: %v", filename)
 				}
 			}
 		}
 
-		time.Sleep(2 * time.Second)
 	}
 
 	return nil
