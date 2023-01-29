@@ -24,6 +24,15 @@ const (
 	authURL = "https://api.saferwall.com/v1/auth/login/"
 )
 
+// Pages represents a paginated list of data items.
+type Pages struct {
+	Page       int         `json:"page"`
+	PerPage    int         `json:"per_page"`
+	PageCount  int         `json:"page_count"`
+	TotalCount int         `json:"total_count"`
+	Items      interface{} `json:"items"`
+}
+
 func newfileUploadRequest(uri, fieldname, filename string) (*http.Request, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -180,7 +189,6 @@ func GetFile(sha256 string, file *entity.File) error {
 
 	return json.Unmarshal(d, &file)
 }
-
 
 func Download(sha256, authToken string) (*bytes.Buffer, error) {
 
