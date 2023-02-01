@@ -6,9 +6,13 @@ package cmd
 
 import (
 	"fmt"
+	"log"
 
+	"github.com/saferwall/saferwall-cli/internal/config"
 	"github.com/spf13/cobra"
 )
+
+var cfg config.Config
 
 var rootCmd = &cobra.Command{
 	Use:   "saferwall-cli",
@@ -28,6 +32,7 @@ upload, scan samples from your drive, or download samples.
 For more details see the github repo at https://github.com/saferwall
 `,
 	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println("You are using version 0.2.0")
 	},
 }
 
@@ -52,4 +57,10 @@ func init() {
 	rootCmd.AddCommand(soukCmd)
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(listCmd)
+
+	err := config.Load(".", "", &cfg)
+	if err != nil {
+		log.Fatal("failed loading CLI config")
+	}
+
 }

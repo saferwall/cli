@@ -1,0 +1,26 @@
+[credentials]
+# The URL used to interact with saferwall APIs.
+url = "https://api.saferwall.com"
+# The user name you choose when you sign-up for saferwall.com.
+username = "YourUsername"
+# The password you choose when you sign-up for saferwall.com.
+password = "YourPassword"
+
+[storage]
+# Deployement kind, possible values: aws, minio, local.
+deployment_kind = "s3"
+# Bucket name where samples are stored.
+bucket = "saferwall-samples"
+    # Only one storage type has to be provided. `deployment_kind` controls
+    # at runtime which one to use.
+    [storage.s3]
+    region = "us-east-1" # AWS region.
+    secret_key = "superSecretKey" # AWS Secret Access Key.
+    access_key = "superSecretAccessKey" # AWS Access key ID.
+    [storage.minio]
+    endpoint = "minio:9000" # MinIO endpoint.
+    region = "us-east-1" # Region.
+    access_key = "minio" # Access key ID.
+    secret_key = "minio123" # Secret Access Key.
+    [storage.local]
+    root_dir = "/saferwall/storage" # Full path to the directory where to store the files.

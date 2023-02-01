@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/gammazero/workerpool"
-	"github.com/joho/godotenv"
 	"github.com/saferwall/saferwall-cli/internal/util"
 	"github.com/saferwall/saferwall-cli/internal/webapi"
 	"github.com/spf13/cobra"
@@ -42,17 +41,6 @@ func init() {
 		"Scan files in parallel (default=false)")
 	scanCmd.MarkFlagRequired("path")
 
-}
-
-func loadEnv() (username, password string) {
-	_ = godotenv.Load()
-
-	username = os.Getenv(DefaultAuthUsername)
-	password = os.Getenv(DefaultAuthPassword)
-	if len(username) == 0 || len(password) == 0 {
-		log.Fatal("username or password env variables are not set")
-	}
-	return
 }
 
 // scanFile scans an individual file or a directory.
@@ -167,11 +155,8 @@ var scanCmd = &cobra.Command{
 	Long:  `Scans the file`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		// load env variable
-		username, password := loadEnv()
-
 		// login to saferwall web service
-		token, err := webapi.Login(username, password)
+		token, err := webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 		if err != nil {
 			log.Fatalf("failed to login to saferwall web service")
 		}

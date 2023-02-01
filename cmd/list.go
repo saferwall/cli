@@ -31,9 +31,7 @@ var listUsersCmd = &cobra.Command{
 	Long:  `Paginate over the list of users in DB.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		username, password := loadEnv()
-
-		token, err := webapi.Login(username, password)
+		token, err := webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 		if err != nil {
 			log.Fatalf("failed to login to saferwall web service")
 		}
@@ -52,11 +50,9 @@ var listFilesCmd = &cobra.Command{
 	Short: "List files.",
 	Long:  `Paginate over the list of files in DB.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		// load env variable
-		username, password := loadEnv()
 
 		// login to saferwall web service
-		token, err := webapi.Login(username, password)
+		token, err := webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 		if err != nil {
 			log.Fatalf("failed to login to saferwall web service")
 		}
