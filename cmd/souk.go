@@ -133,23 +133,21 @@ func addFamilyToSouk(familyYamlPath string) error {
 		if !m["category"][sample.Category] {
 			err = generateLink("category", sample.Category, family.Name)
 			if err != nil {
-				log.Fatalf("failed to generate criteria link: %v", err)
+				log.Printf("failed to generate criteria link: %v", err)
 			}
 		}
 
 		if !m["platform"][sample.Platform] {
 			err = generateLink("platform", sample.Platform, family.Name)
 			if err != nil {
-				log.Fatalf("failed to generate criteria link: %v", err)
-
+				log.Printf("failed to generate criteria link: %v", err)
 			}
 		}
 
 		if !m["fileformat"][sample.FileFormat] {
 			err = generateLink("fileformat", sample.FileFormat, family.Name)
 			if err != nil {
-				log.Fatalf("failed to generate criteria link: %v", err)
-
+				log.Printf("failed to generate criteria link: %v", err)
 			}
 		}
 
@@ -213,7 +211,7 @@ func generateMalwareSoukDB() error {
 			files[sample.SHA256] = file
 		}
 
-		// generate markdown for corpus.
+		// Generate markdown for corpus.
 		err = generateCorpusMarkdown(family, files)
 		if err != nil {
 			log.Fatal(err)
@@ -266,7 +264,7 @@ func initMalwareSouk() error {
 				return err
 			}
 
-			// drop the README.md
+			// Drop the README.md.
 			filename := filepath.Join(subCriteriaDirName, "README.md")
 			data := fmt.Sprintf("# Browse corpus by %s / %s:\n\n", criteriaName, subCriteriaName)
 			r := bytes.NewBuffer([]byte(data))

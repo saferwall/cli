@@ -58,9 +58,9 @@ func init() {
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(listCmd)
 
+	// Load our configuration file.
 	err := config.Load(".", "", &cfg)
 	if err != nil {
 		log.Fatal("failed loading CLI config")
 	}
-
 }
