@@ -16,12 +16,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var (
+	fileHash string
+)
+
 func init() {
 	reScanCmd.Flags().StringVarP(&filePath, "path", "p", "",
-		"File name or path containing list of SHA256 to scan (required)")
+		"File name or path containing list of SHA256 to scan")
+	reScanCmd.Flags().StringVarP(&fileHash, "hash", "s", "",
+		"SHA256 of the file to rescan")
 	reScanCmd.Flags().BoolVarP(&asyncScanFlag, "async", "a", false,
 		"Scan files in parallel (default=false)")
-	reScanCmd.MarkFlagRequired("path")
 
 }
 
@@ -56,7 +61,7 @@ func reScanFile(shaList []string, token string, async bool) error {
 		if err != nil {
 			log.Fatalf("failed to rescan file: %v", sha256)
 		}
-		time.Sleep(15 * time.Second)
+		time.Sleep(20 * time.Second)
 
 	}
 
@@ -69,20 +74,24 @@ var reScanCmd = &cobra.Command{
 	Long:  `Rescans the file`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		// login to saferwall web service
+		// Login to saferwall web service
 		token, err := webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 		if err != nil {
 			log.Fatalf("failed to login to saferwall web service")
 		}
 
-		// read the txt file containing the list of hashes to
-		// rescan.
-		data, err := util.ReadAll(filePath)
-		if err != nil {
-			log.Fatalf("failed to read txt file")
-		}
+		// Read the txt file containing the list of hashes to rescan.
+		var sha256List []string
+		if filePath != "" {
+			data, err := util.ReadAll(filePath)
+			if err != nil {
+				log.Fatalf("failed to read txt file")
+			}
 
-		sha256List := strings.Split(string(data), "\n")
+			sha256List = strings.Split(string(data), "\n")
+		} else {
+			sha256List = append(sha256List, fileHash)
+		}
 
 		reScanFile(sha256List, token, asyncScanFlag)
 	},
