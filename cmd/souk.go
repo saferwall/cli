@@ -135,6 +135,7 @@ func addFamilyToSouk(familyYamlPath string) error {
 			if err != nil {
 				log.Printf("failed to generate criteria link: %v", err)
 			}
+			m["category"][sample.Category] = true
 		}
 
 		if !m["platform"][sample.Platform] {
@@ -142,6 +143,7 @@ func addFamilyToSouk(familyYamlPath string) error {
 			if err != nil {
 				log.Printf("failed to generate criteria link: %v", err)
 			}
+			m["platform"][sample.Platform] = true
 		}
 
 		if !m["fileformat"][sample.FileFormat] {
@@ -149,14 +151,18 @@ func addFamilyToSouk(familyYamlPath string) error {
 			if err != nil {
 				log.Printf("failed to generate criteria link: %v", err)
 			}
-		}
 
-		m["category"][sample.Category] = true
-		m["platform"][sample.Platform] = true
-		m["fileformat"][sample.FileFormat] = true
+			m["fileformat"][sample.FileFormat] = true
+		}
 	}
 
-	// Generate family markdown in corpus.
+	// Generate family link.
+	err = generateLink("family", "", family.Name)
+	if err != nil {
+		log.Printf("failed to generate criteria link: %v", err)
+	}
+
+	// Generate markdown inside corpus/.
 	err = generateCorpusMarkdown(family, files)
 	if err != nil {
 		log.Fatal(err)
@@ -339,49 +345,17 @@ func generateCorpusMarkdown(fam entity.Family, files map[string]entity.File) err
 	return nil
 }
 
-func generateCategoryMarkdown(fam entity.Family, files map[string]entity.File) error {
-	body := new(bytes.Buffer)
-
-	// render the markdown
-	famTemplate := filepath.Join("./templates", "symlink.md")
-
-	tpl := template.Must(
-		template.New("symlink.md").Funcs(sprig.FuncMap()).ParseFiles(famTemplate))
-
-	data := struct {
-		Fam   entity.Family
-		Files map[string]entity.File
-	}{
-		fam,
-		files,
-	}
-
-	if err := tpl.Execute(body, data); err != nil {
-		return err
-	}
-
-	// create target family directory.
-	corpusFamilyPath := filepath.Join(soukFlag, "corpus", fam.Name)
-	if !util.Exists(corpusFamilyPath) {
-		err := os.Mkdir(corpusFamilyPath, 0755)
-		if err != nil {
-			return err
-		}
-	}
-
-	// write the family README.
-	corpusFamilyReadme := filepath.Join(corpusFamilyPath, "README.md")
-	_, err := util.WriteBytesFile(corpusFamilyReadme, body)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func generateLink(criteria, subCriteria, familyName string) error {
 
-	path := filepath.Join(soukFlag, criteria, subCriteria, "README.md")
+	var path string
+
+	// Special case when we are processing the `family` link
+	if subCriteria == "" {
+		path = filepath.Join(soukFlag, criteria, "README.md")
+	} else {
+
+		path = filepath.Join(soukFlag, criteria, subCriteria, "README.md")
+	}
 	readmeData, err := util.ReadAll(path)
 	if err != nil {
 		return err
@@ -419,6 +393,9 @@ func generateLink(criteria, subCriteria, familyName string) error {
 	} else {
 		newReadmeData = strings.ReplaceAll(string(readmeData), match[1], newContent)
 	}
+
+	// Finally insert a new line at EOF.
+	newReadmeData += "\n"
 
 	_, err = util.WriteBytesFile(path, bytes.NewBufferString(newReadmeData))
 	if err != nil {

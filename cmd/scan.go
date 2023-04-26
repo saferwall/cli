@@ -48,6 +48,7 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
+		log.Printf("directory [%s] does not exists", filePath)
 		return err
 	}
 
@@ -81,11 +82,10 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 				// Check if we the file exists in the DB.
 				exists, err := webapi.FileExists(sha256)
 				if err != nil {
-					log.Fatalf("failed to check existance of file: %v", filename)
+					log.Fatalf("failed to check existence of file: %v", filename)
 				}
 
-				// Upload the file to be scanned, this will automatically
-				// triger a scan request.
+				// Upload the file to be scanned, this will automatically trigger a scan request.
 				if !exists {
 					_, err = webapi.Upload(filename, token)
 					if err != nil {

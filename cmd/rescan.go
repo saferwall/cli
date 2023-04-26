@@ -61,7 +61,7 @@ func reScanFile(shaList []string, token string, async bool) error {
 		if err != nil {
 			log.Fatalf("failed to rescan file: %v", sha256)
 		}
-		time.Sleep(20 * time.Second)
+		time.Sleep(10* time.Second)
 
 	}
 
