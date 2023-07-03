@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 func check(e error) {
@@ -127,7 +128,6 @@ func MkDir(name string) bool {
 	return true
 }
 
-
 // StringInSlice returns whether or not a string exists in a slice.
 func StringInSlice(a string, list []string) bool {
 	for _, b := range list {
@@ -148,4 +148,23 @@ func UniqueSlice(slice []string) []string {
 		}
 	}
 	return cleaned
+}
+
+// WalkAllFilesInDir returns list of files in directory.
+func WalkAllFilesInDir(dir string) ([]string, error) {
+
+	fileList := []string{}
+	err := filepath.Walk(dir, func(path string, info os.FileInfo, e error) error {
+		if e != nil {
+			return e
+		}
+
+		// check if it is a regular file (not dir)
+		if info.Mode().IsRegular() {
+			fileList = append(fileList, path)
+		}
+		return nil
+	})
+
+	return fileList, err
 }

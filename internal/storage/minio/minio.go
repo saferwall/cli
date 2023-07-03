@@ -113,3 +113,23 @@ func (s Service) Exists(ctx context.Context, bucketName,
 	}
 	return true, nil
 }
+
+// List enumerates the list of objects in a bucket.
+func (s Service) List(ctx context.Context, bucketName string) ([]string, error) {
+	var objKeys []string
+
+	opts := miniogo.ListObjectsOptions{
+		UseV1:     true,
+		Recursive: true,
+	}
+
+	for object := range s.client.ListObjects(ctx, bucketName, opts) {
+		if object.Err != nil {
+			return nil, object.Err
+		}
+		objKeys = append(objKeys, object.Key)
+
+	}
+
+	return objKeys, nil
+}

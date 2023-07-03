@@ -31,6 +31,8 @@ type Storage interface {
 	MakeBucket(ctx context.Context, bucket, location string) error
 	// Exists checks whether an object exists.
 	Exists(ctx context.Context, bucket, key string) (bool, error)
+	// List enumerates the list of objects in a bucket.
+	List(ctx context.Context, bucket string) ([]string, error)
 }
 
 // Options for object storage.

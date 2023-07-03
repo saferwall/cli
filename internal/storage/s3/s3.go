@@ -155,3 +155,23 @@ func (s Service) Exists(ctx context.Context, bucketName,
 	}
 	return true, nil
 }
+
+func (s Service) List(ctx context.Context, bucketName string) ([]string, error) {
+	var objKeys []string
+
+	input := &s3.ListObjectsInput{Bucket: aws.String(bucketName)}
+
+	err := s.s3svc.ListObjectsPagesWithContext(ctx, input,
+		func(p *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
+			for _, obj := range p.Contents {
+				objKeys = append(objKeys, *obj.Key)
+			}
+			return true
+		})
+	if err != nil {
+		return nil, err
+	}
+
+	return objKeys, nil
+}
+

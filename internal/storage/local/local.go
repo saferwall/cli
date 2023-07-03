@@ -10,6 +10,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/saferwall/saferwall-cli/internal/util"
 )
 
 // Service provides abstraction to cloud object storage.
@@ -92,4 +94,10 @@ func (s Service) Exists(ctx context.Context, bucketName, key string) (bool, erro
 		return false, nil
 	}
 	return false, err
+}
+
+// List enumerates the list of objects in a bucket.
+func (s Service) List(ctx context.Context, bucketName string) ([]string, error) {
+
+	return util.WalkAllFilesInDir(bucketName)
 }
