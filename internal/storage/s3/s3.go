@@ -6,6 +6,7 @@ package s3
 
 import (
 	"context"
+	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -159,13 +160,17 @@ func (s Service) Exists(ctx context.Context, bucketName,
 func (s Service) List(ctx context.Context, bucketName string) ([]string, error) {
 	var objKeys []string
 
-	input := &s3.ListObjectsInput{Bucket: aws.String(bucketName)}
+	it := 0
 
+	input := &s3.ListObjectsInput{Bucket: aws.String(bucketName)}
 	err := s.s3svc.ListObjectsPagesWithContext(ctx, input,
 		func(p *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
 			for _, obj := range p.Contents {
 				objKeys = append(objKeys, *obj.Key)
 			}
+
+			it++
+			fmt.Println("Page,", it)
 			return true
 		})
 	if err != nil {
@@ -174,4 +179,3 @@ func (s Service) List(ctx context.Context, bucketName string) ([]string, error) 
 
 	return objKeys, nil
 }
-
