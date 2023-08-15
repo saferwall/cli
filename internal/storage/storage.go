@@ -33,6 +33,8 @@ type Storage interface {
 	Exists(ctx context.Context, bucket, key string) (bool, error)
 	// List enumerates the list of objects in a bucket.
 	List(ctx context.Context, bucket string) ([]string, error)
+	// Delete removes an object from the store.
+	Delete(ctx context.Context, bucket, key string) error
 }
 
 // Options for object storage.

@@ -101,3 +101,16 @@ func (s Service) List(ctx context.Context, bucketName string) ([]string, error) 
 
 	return util.WalkAllFilesInDir(bucketName)
 }
+
+// Delete deletes an object from the local file system.
+func (s Service) Delete(ctx context.Context, bucket, key string) error {
+
+	// Get the file path.
+	name := filepath.Join(s.root, bucket, key)
+	err := os.Remove(name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
