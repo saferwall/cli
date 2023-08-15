@@ -115,7 +115,7 @@ var listFilesCmd = &cobra.Command{
 				fileContent.WriteString("\n")
 			}
 
-			_, err = util.WriteBytesFile("s3-all-docs.txt", &fileContent)
+			_, err = util.WriteBytesFile("s3-all-sha256.txt", &fileContent)
 			if err != nil {
 				log.Fatalf("failed to write data to file: %v", err)
 				return

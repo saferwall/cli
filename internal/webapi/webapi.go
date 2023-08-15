@@ -218,3 +218,32 @@ func Download(sha256, authToken string) (*bytes.Buffer, error) {
 	defer resp.Body.Close()
 	return body, nil
 }
+
+func Delete(sha256, authToken string) error {
+
+	url := fileURL + sha256
+	request, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return err
+	}
+
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Cookie", "JWTCookie="+authToken)
+
+	// Perform the http post request.
+	client := &http.Client{}
+	resp, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+
+	// Read the response.
+	body := &bytes.Buffer{}
+	_, err = body.ReadFrom(resp.Body)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+	return nil
+}

@@ -57,6 +57,7 @@ func init() {
 	rootCmd.AddCommand(soukCmd)
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(listCmd)
+	rootCmd.AddCommand(deleteCmd)
 
 	// Load our configuration file.
 	err := config.Load(".", "", &cfg)
