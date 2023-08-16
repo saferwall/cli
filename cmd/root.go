@@ -12,6 +12,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	version = "0.2.0"
+)
+
 var cfg config.Config
 
 var rootCmd = &cobra.Command{
@@ -32,7 +36,7 @@ upload, scan samples from your drive, or download samples.
 For more details see the github repo at https://github.com/saferwall
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("You are using version 0.2.0")
+		fmt.Printf("You are using version %s\n", version)
 	},
 }
 
@@ -41,7 +45,7 @@ var versionCmd = &cobra.Command{
 	Short: "Version number",
 	Long:  "Print the version number",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("You are using version 0.2.0")
+		fmt.Printf("You are using version %s\n", version)
 	},
 }
 
@@ -58,6 +62,7 @@ func init() {
 	rootCmd.AddCommand(downloadCmd)
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(deleteCmd)
+	rootCmd.AddCommand(uploadCmd)
 
 	// Load our configuration file.
 	err := config.Load(".", "", &cfg)
