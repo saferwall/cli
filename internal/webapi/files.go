@@ -7,6 +7,8 @@ package webapi
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"net/http"
 )
@@ -50,10 +52,10 @@ func FileExists(sha256 string) (bool, error) {
 }
 
 // ListFiles list all the files in DB.
-func ListFiles(authToken string) ([]string, error) {
+func ListFiles(authToken string, page int) (*Pages, error) {
 
-	var listSha256 []string
-	url := fileURL + "?fields=sha256"
+	var pages Pages
+	url := fmt.Sprintf("%s?page=%d", fileURL, page)
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -74,17 +76,23 @@ func ListFiles(authToken string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
-	var shaMap []map[string]string
-	err = json.Unmarshal(body.Bytes(), &shaMap)
+	if resp.StatusCode != 200 {
+		var jsonBody map[string]interface{}
+		err = json.Unmarshal(body.Bytes(), &jsonBody)
+		if err != nil {
+			return nil, err
+		}
+		msg := jsonBody["message"].(string)
+		return nil, errors.New(msg)
+	}
+
+	err = json.Unmarshal(body.Bytes(), &pages)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, v := range shaMap {
-		listSha256 = append(listSha256, v["sha256"])
-	}
+	return &pages, nil
 
-	resp.Body.Close()
-	return listSha256, nil
 }

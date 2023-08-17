@@ -7,8 +7,10 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"log"
 
+	"github.com/saferwall/saferwall-cli/internal/entity"
 	s "github.com/saferwall/saferwall-cli/internal/storage"
 	"github.com/saferwall/saferwall-cli/internal/util"
 	"github.com/saferwall/saferwall-cli/internal/webapi"
@@ -67,17 +69,50 @@ var listFilesCmd = &cobra.Command{
 
 		if walkDBFlag {
 
+			var fileContent bytes.Buffer
+
 			token, err := webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 			if err != nil {
 				log.Fatalf("failed to login to saferwall web service")
 			}
 
-			files, err := webapi.ListFiles(token)
+			// Do an initial call to get the page's count.
+			pages, err := webapi.ListFiles(token, 1)
 			if err != nil {
-				log.Fatalf("failed to list files")
+				log.Fatalf("failed to list files: %v", err)
 			}
+			log.Printf("the database contains %d files", pages.TotalCount)
 
-			log.Print(len(files))
+			// Iterate over each File page.
+			for page := 1; page <= pages.PageCount; page ++ {
+
+				log.Printf("getting files for page: %d", page)
+				results, err := webapi.ListFiles(token, page)
+				if err != nil {
+					log.Fatalf("failed to list files: %v", err)
+				}
+
+				var listSha256 []string
+				files := results.Items.([]interface{})
+				for _, fileIf := range files {
+					file := entity.File{}
+					b, _ := json.Marshal(fileIf)
+					json.Unmarshal(b, &file)
+					listSha256 = append(listSha256, file.SHA256)
+				}
+
+				// Using bytes.Buffer for concatenation to avoid extra mem allocation using +.
+				for _, sha256 := range listSha256 {
+					fileContent.WriteString(sha256)
+					fileContent.WriteString("\n")
+				}
+
+			}
+			_, err = util.WriteBytesFile("db-all-sha256.txt", &fileContent)
+			if err != nil {
+				log.Fatalf("failed to write data to file: %v", err)
+				return
+			}
 		} else if walkS3Flag {
 			opts := s.Options{}
 			switch cfg.Storage.DeploymentKind {
