@@ -27,7 +27,7 @@
 | SHA1 | {{ $file.SHA1 }} |
 | SHA256 | {{ $file.SHA256 }} |
 | SHA512 | {{ $file.SHA512 }} |
-| Ssdeep | {{ $file.Ssdeep }} |
+| Ssdeep | {{ $file.SSDeep }} |
 | Magic | {{ $file.Magic }}  |
 | Packer | {{ range $file.Packer }}{{ . }}<br />{{ end }} |
 | TrID | {{ range $file.TriD }}{{ . }}<br />{{ end }} |

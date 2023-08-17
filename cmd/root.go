@@ -7,8 +7,10 @@ package cmd
 import (
 	"fmt"
 	"log"
+	"path/filepath"
 
 	"github.com/saferwall/saferwall-cli/internal/config"
+	"github.com/saferwall/saferwall-cli/internal/util"
 	"github.com/spf13/cobra"
 )
 
@@ -65,8 +67,9 @@ func init() {
 	rootCmd.AddCommand(uploadCmd)
 
 	// Load our configuration file.
-	err := config.Load(".", "", &cfg)
+	cfgFilePath := filepath.Join(util.UserHomeDir(), ".config", "saferwall")
+	err := config.Load(cfgFilePath, "", &cfg)
 	if err != nil {
-		log.Fatal("failed loading CLI config")
+		log.Fatalf("failed loading CLI config: %v", err)
 	}
 }
