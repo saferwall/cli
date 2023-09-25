@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/Masterminds/sprig v2.22.0+incompatible
 	github.com/aws/aws-sdk-go v1.44.250
+	github.com/couchbase/gocb/v2 v2.6.3
 	github.com/gammazero/workerpool v1.1.3
 	github.com/minio/minio-go/v7 v7.0.52
 	github.com/spf13/cobra v1.7.0
@@ -16,9 +17,11 @@ require (
 require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/couchbase/gocbcore/v10 v10.2.3 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gammazero/deque v0.2.1 // indirect
+	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect
