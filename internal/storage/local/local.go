@@ -97,9 +97,9 @@ func (s Service) Exists(ctx context.Context, bucketName, key string) (bool, erro
 }
 
 // List enumerates the list of objects in a bucket.
-func (s Service) List(ctx context.Context, bucketName string) ([]string, error) {
-
-	return util.WalkAllFilesInDir(bucketName)
+func (s Service) List(ctx context.Context, bucketName, prefix string) ([]string, error) {
+	dir := filepath.Join(bucketName, prefix)
+	return util.WalkAllFilesInDir(dir)
 }
 
 // Delete deletes an object from the local file system.

@@ -38,11 +38,12 @@ type LocalFsCfg struct {
 // StorageCfg represents the object storage config.
 type StorageCfg struct {
 	// Deployment kind, possible values: aws, gcp, azure, local.
-	DeploymentKind string     `mapstructure:"deployment_kind"`
-	Bucket         string     `mapstructure:"bucket"`
-	S3             AWSS3Cfg   `mapstructure:"s3"`
-	MinIO          MinIOCfg   `mapstructure:"minio"`
-	Local          LocalFsCfg `mapstructure:"local"`
+	DeploymentKind  string     `mapstructure:"deployment_kind"`
+	SamplesBucket   string     `mapstructure:"samples_bucket"`
+	ArtifactsBucket string     `mapstructure:"artifacts_bucket"`
+	S3              AWSS3Cfg   `mapstructure:"s3"`
+	MinIO           MinIOCfg   `mapstructure:"minio"`
+	Local           LocalFsCfg `mapstructure:"local"`
 }
 
 // DatabaseCfg represents the database config.

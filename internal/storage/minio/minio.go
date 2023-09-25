@@ -115,12 +115,13 @@ func (s Service) Exists(ctx context.Context, bucketName,
 }
 
 // List enumerates the list of objects in a bucket.
-func (s Service) List(ctx context.Context, bucketName string) ([]string, error) {
+func (s Service) List(ctx context.Context, bucketName, prefix string) ([]string, error) {
 	var objKeys []string
 
 	opts := mio.ListObjectsOptions{
 		UseV1:     true,
 		Recursive: true,
+		Prefix:    prefix,
 	}
 
 	for object := range s.client.ListObjects(ctx, bucketName, opts) {
