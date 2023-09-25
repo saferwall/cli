@@ -45,10 +45,23 @@ type StorageCfg struct {
 	Local          LocalFsCfg `mapstructure:"local"`
 }
 
+// DatabaseCfg represents the database config.
+type DatabaseCfg struct {
+	// the data source name (DSN) for connecting to the database.
+	Server string `mapstructure:"server"`
+	// Username used to access the db.
+	Username string `mapstructure:"username"`
+	// Password used to access the db.
+	Password string `mapstructure:"password"`
+	// Name of the couchbase bucket.
+	BucketName string `mapstructure:"bucket_name"`
+}
+
 // Config represents our CLI app config.
 type Config struct {
 	Credentials CredentialsCfg `mapstructure:"credentials"`
 	Storage     StorageCfg     `mapstructure:"storage"`
+	DB          DatabaseCfg    `mapstructure:"db"`
 }
 
 // Load returns an application configuration which is populated

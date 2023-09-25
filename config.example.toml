@@ -24,3 +24,9 @@ bucket = "saferwall-samples"
     secret_key = "minio123" # Secret Access Key.
     [storage.local]
     root_dir = "/saferwall/storage" # Full path to the directory where to store the files.
+
+[db]
+server = "couchbase://localhost" # DSN for connecting to the database
+username = "Administrator" # Username used to access the db.
+password = "password" # Password used to access the db.
+bucket_name = "sfw" # Name of the couchbase bucket.

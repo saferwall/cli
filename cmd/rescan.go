@@ -56,12 +56,15 @@ func reScanFile(shaList []string, token string, async bool) error {
 	// Sequentially scan the files.
 	for _, sha256 := range shaList {
 
-		log.Printf("rescanning %s", sha256)
+		log.Printf("re-scanning %s", sha256)
 		err := webapi.Rescan(sha256, token)
 		if err != nil {
 			log.Fatalf("failed to rescan file: %v", sha256)
 		}
-		time.Sleep(30 * time.Second)
+
+		if len(shaList) > 1 {
+			time.Sleep(30 * time.Second)
+		}
 
 	}
 
