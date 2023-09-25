@@ -10,7 +10,9 @@ password = "YourPassword"
 # Deployement kind, possible values: aws, minio, local.
 deployment_kind = "s3"
 # Bucket name where samples are stored.
-bucket = "saferwall-samples"
+samples_bucket = "saferwall-samples"
+# Bucket name where behavior artifacts are stored.
+artifacts_bucket = "saferwall-artifacts"
     # Only one storage type has to be provided. `deployment_kind` controls
     # at runtime which one to use.
     [storage.s3]

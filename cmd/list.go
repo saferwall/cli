@@ -84,7 +84,7 @@ var listFilesCmd = &cobra.Command{
 			log.Printf("the database contains %d files", pages.TotalCount)
 
 			// Iterate over each File page.
-			for page := 1; page <= pages.PageCount; page ++ {
+			for page := 1; page <= pages.PageCount; page++ {
 
 				log.Printf("getting files for page: %d", page)
 				results, err := webapi.ListFiles(token, page)
@@ -129,7 +129,7 @@ var listFilesCmd = &cobra.Command{
 				opts.LocalRootDir = cfg.Storage.Local.RootDir
 			}
 
-			opts.Bucket = cfg.Storage.Bucket
+			opts.Bucket = cfg.Storage.SamplesBucket
 
 			sto, err := s.New(cfg.Storage.DeploymentKind, opts)
 			if err != nil {
@@ -137,7 +137,7 @@ var listFilesCmd = &cobra.Command{
 				return
 			}
 
-			files, err := sto.List(context.TODO(), cfg.Storage.Bucket)
+			files, err := sto.List(context.TODO(), cfg.Storage.SamplesBucket, "")
 			if err != nil {
 				log.Fatalf("failed to list objects in bucket: %v", err)
 				return

@@ -9,6 +9,7 @@ import (
 	"context"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -19,6 +20,7 @@ import (
 )
 
 var sha256Flag string
+var bhvReportFlag string
 var txtFlag string
 var outputFlag string
 var useWebAPIs bool
@@ -30,8 +32,11 @@ func init() {
 	}
 
 	downloadCmd.Flags().
-		StringVarP(&sha256Flag, "sha256", "s", "",
+		StringVarP(&sha256Flag, "hash", "s", "",
 			"SHA256 hash to download")
+	downloadCmd.Flags().
+		StringVarP(&bhvReportFlag, "behavior-report", "b", "",
+			"GUID for behavior report to download")
 	downloadCmd.Flags().StringVarP(&txtFlag, "txt", "t", "",
 		"Download all hashes in a text file, separate by a line break")
 	downloadCmd.Flags().StringVarP(&outputFlag, "output", "o", filepath.Dir(ex),
@@ -42,8 +47,8 @@ func init() {
 
 var downloadCmd = &cobra.Command{
 	Use:   "download",
-	Short: "Download a sample(s) given its SHA256 hash.",
-	Long:  `Download a binary sample given a sha256.`,
+	Short: "Download a sample(s) or a behavior report",
+	Long:  `Download a binary sample given a sha256 or a behavior report using its GUID.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
 		var token string
@@ -73,7 +78,7 @@ var downloadCmd = &cobra.Command{
 				opts.LocalRootDir = cfg.Storage.Local.RootDir
 			}
 
-			opts.Bucket = cfg.Storage.Bucket
+			opts.Bucket = cfg.Storage.SamplesBucket
 
 			sto, err = s.New(cfg.Storage.DeploymentKind, opts)
 			if err != nil {
@@ -95,8 +100,17 @@ var downloadCmd = &cobra.Command{
 			sha256list := strings.Split(string(data), "\n")
 			for _, sha256 := range sha256list {
 				if len(sha256) >= 64 {
-					download(sha256, token, sto)
+					err = download(sha256, token, sto)
+					if err != nil {
+						log.Fatalf("failed to download sample (%s): %v", sha256, err)
+					}
+
 				}
+			}
+		} else if bhvReportFlag != "" {
+			err = downloadBhvReport(sto, bhvReportFlag)
+			if err != nil {
+				log.Fatalf("failed to download behavior report (%s): %v", bhvReportFlag, err)
 			}
 		}
 	},
@@ -122,7 +136,7 @@ func download(sha256, token string, sto s.Storage) error {
 		destPath = filepath.Join(outputFlag, filename)
 
 	} else {
-		err := sto.Download(context.TODO(), cfg.Storage.Bucket, sha256, &data)
+		err := sto.Download(context.TODO(), cfg.Storage.SamplesBucket, sha256, &data)
 		if err != nil {
 			return err
 		}
@@ -131,8 +145,36 @@ func download(sha256, token string, sto s.Storage) error {
 	}
 	_, err = util.WriteBytesFile(destPath, &data)
 	if err != nil {
-		log.Fatalf("failed to write bytes to file %s, err: %v", sha256, err)
 		return err
+	}
+
+	return nil
+}
+
+func downloadBhvReport(sto s.Storage, bhvReportID string) error {
+	var data bytes.Buffer
+
+	log.Printf("downloading behavior report for GUID: %s", bhvReportID)
+
+	objects, err := sto.List(context.TODO(), cfg.Storage.ArtifactsBucket, bhvReportID)
+	if err != nil {
+		return err
+	}
+
+	for _, obj := range objects {
+		log.Printf("downloading %s ..", obj)
+		err := sto.Download(context.TODO(), cfg.Storage.ArtifactsBucket, obj, &data)
+		if err != nil {
+			return err
+		}
+
+		objPath := filepath.Join(outputFlag, obj)
+		os.MkdirAll(path.Dir(objPath), os.ModePerm)
+		_, err = util.WriteBytesFile(objPath, &data)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	return nil

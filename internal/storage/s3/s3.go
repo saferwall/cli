@@ -158,12 +158,13 @@ func (s Service) Exists(ctx context.Context, bucketName,
 	return true, nil
 }
 
-func (s Service) List(ctx context.Context, bucketName string) ([]string, error) {
+func (s Service) List(ctx context.Context, bucketName, prefix string) ([]string, error) {
 	var objKeys []string
 
 	it := 0
 
-	input := &s3.ListObjectsInput{Bucket: aws.String(bucketName)}
+	input := &s3.ListObjectsInput{Bucket: aws.String(bucketName),
+		Prefix: aws.String(prefix)}
 	err := s.s3svc.ListObjectsPagesWithContext(ctx, input,
 		func(p *s3.ListObjectsOutput, last bool) (shouldContinue bool) {
 			for _, obj := range p.Contents {

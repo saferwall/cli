@@ -58,7 +58,7 @@ var deleteCmd = &cobra.Command{
 				opts.LocalRootDir = cfg.Storage.Local.RootDir
 			}
 
-			opts.Bucket = cfg.Storage.Bucket
+			opts.Bucket = cfg.Storage.SamplesBucket
 
 			sto, err = s.New(cfg.Storage.DeploymentKind, opts)
 			if err != nil {
@@ -99,7 +99,7 @@ func delete(sha256, token string, sto s.Storage) error {
 		}
 
 	} else {
-		err := sto.Delete(context.TODO(), cfg.Storage.Bucket, sha256)
+		err := sto.Delete(context.TODO(), cfg.Storage.SamplesBucket, sha256)
 		if err != nil {
 			log.Fatalf("failed to delete %s, err: %v", sha256, err)
 			return err

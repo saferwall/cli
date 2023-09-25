@@ -42,7 +42,7 @@ var uploadCmd = &cobra.Command{
 			opts.LocalRootDir = cfg.Storage.Local.RootDir
 		}
 
-		opts.Bucket = cfg.Storage.Bucket
+		opts.Bucket = cfg.Storage.SamplesBucket
 
 		sto, err := s.New(cfg.Storage.DeploymentKind, opts)
 		if err != nil {
@@ -64,7 +64,7 @@ var uploadCmd = &cobra.Command{
 			r := bytes.NewReader(fileContent)
 
 			log.Printf("uploading %s", sha256)
-			err = sto.Upload(context.TODO(), cfg.Storage.Bucket, sha256, r)
+			err = sto.Upload(context.TODO(), cfg.Storage.SamplesBucket, sha256, r)
 			if err != nil {
 				log.Fatalf("failed to upload file %s: %v", filePath, err)
 			}
