@@ -10,17 +10,25 @@ You can either download pre-built binaries or build the tool yourself.
 go install github.com/saferwall/saferwall-cli
 ```
 
+
 ## Usage
 
 To use the CLI tool you need a [Saferwall](https://saferwall.com) account in order to authenticate yourself.
 
-The CLI tool reads your username and password from a local `.env` file or from your OS environment variable.
+Use the `config.example.toml` as a reference to reference your credendials. The file should be located in:
+``~/.config/saferwall/config.toml`:
 
-```sh
-SAFERWALL_AUTH_USERNAME=username
-SAFERWALL_AUTH_PASSWORD=password
+```toml
+[credentials]
+# The URL used to interact with saferwall APIs.
+url = "https://api.saferwall.com"
+# The user name you choose when you sign-up for saferwall.com.
+username = "YourUsername"
+# The password you choose when you sign-up for saferwall.com.
+password = "YourPassword"
 ```
 
+The CLI app can also be used to interfact with a self-hosted deployment.
 
 ```sh
 saferwall-cli - Saferwall command line tool
@@ -42,19 +50,20 @@ Usage:
   saferwall-cli [command]
 
 Available Commands:
-  completion  generate the autocompletion script for the specified shell
-  download    Download a sample given its SHA256 hash.
-  gen         Generate malware souk markdown for the entire corpus
+  completion  Generate the autocompletion script for the specified shell
+  delete      Delete a sample(s) given its SHA256 hash.
+  download    Download a sample(s) or a behavior report
   help        Help about any command
+  list        List users or files.
+  rescan      Rescan an exiting file using its hash
   scan        Submit a scan request of a file using its hash
+  souk        Populate malware-souk database.
+  upload      Upload samples directly to object storage.
   version     Version number
 
 Flags:
   -h, --help   help for saferwall-cli
-
-Use "saferwall-cli [command] --help" for more information about a command.
 ```
-
 
 ### Download
 
