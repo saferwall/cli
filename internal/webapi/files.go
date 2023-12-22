@@ -55,7 +55,7 @@ func FileExists(sha256 string) (bool, error) {
 func ListFiles(authToken string, page int) (*Pages, error) {
 
 	var pages Pages
-	url := fmt.Sprintf("%s?page=%d", fileURL, page)
+	url := fmt.Sprintf("%s?per_page=%d&page=%d&fields=sha256", fileURL, 1000, page)
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err

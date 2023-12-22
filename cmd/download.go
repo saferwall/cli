@@ -162,6 +162,9 @@ func downloadBhvReport(sto s.Storage, bhvReportID string) error {
 	}
 
 	for _, obj := range objects {
+		if strings.HasSuffix(obj, "/") {
+			continue
+		}
 		log.Printf("downloading %s ..", obj)
 		err := sto.Download(context.TODO(), cfg.Storage.ArtifactsBucket, obj, &data)
 		if err != nil {

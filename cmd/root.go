@@ -44,7 +44,7 @@ For more details see the github repo at https://github.com/saferwall
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Version number",
+	Short: "Print the version number",
 	Long:  "Print the version number",
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Printf("You are using version %s\n", version)

@@ -18,15 +18,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	// DefaultAuthUsername represents the key for reading the username
-	// from env variables.
-	DefaultAuthUsername = "SAFERWALL_AUTH_USERNAME"
-	// DefaultAuthPassword represents the key for reading password
-	// from env variables.
-	DefaultAuthPassword = "SAFERWALL_AUTH_PASSWORD"
-)
-
 // Used for flags.
 var filePath string
 var forceRescanFlag bool

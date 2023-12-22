@@ -15,14 +15,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var delFromDB bool
+var delFromObjSto bool
+
 func init() {
 	deleteCmd.Flags().
 		StringVarP(&sha256Flag, "sha256", "s", "",
 			"SHA256 hash to delete")
 	deleteCmd.Flags().StringVarP(&txtFlag, "txt", "t", "",
 		"Delete all hashes in a text file, separate by a line break")
-	deleteCmd.Flags().BoolVarP(&useWebAPIs, "useWebAPIs", "u", false,
-		"Use the web APIs to delete samples rather than deleting directly from object storage")
+	deleteCmd.Flags().BoolVarP(&delFromDB, "deleteFromDB", "d", false,
+		"Delete the sample from the DB")
+	deleteCmd.Flags().BoolVarP(&delFromObjSto, "deleteFromStore", "r", false,
+		"Delete the sample from the object storage")
 }
 
 var deleteCmd = &cobra.Command{
@@ -35,13 +40,15 @@ var deleteCmd = &cobra.Command{
 		var sto s.Storage
 		var err error
 
-		if useWebAPIs {
+		if delFromDB {
 			// Authenticate to Saferwall web service.
 			token, err = webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 			if err != nil {
 				log.Fatalf("failed to login to saferwall web service")
 			}
-		} else {
+		}
+
+		if delFromObjSto {
 			// Authenticate to object storage service.
 			opts := s.Options{}
 			switch cfg.Storage.DeploymentKind {
@@ -67,7 +74,7 @@ var deleteCmd = &cobra.Command{
 			}
 		}
 
-		// delete a single binary.
+		// Delete a single binary.
 		if sha256Flag != "" {
 			delete(sha256Flag, token, sto)
 		} else if txtFlag != "" {
@@ -97,8 +104,9 @@ func delete(sha256, token string, sto s.Storage) error {
 			log.Fatalf("failed to delete %s, err: %v", sha256, err)
 			return err
 		}
+	}
 
-	} else {
+	if sto != nil {
 		err := sto.Delete(context.TODO(), cfg.Storage.SamplesBucket, sha256)
 		if err != nil {
 			log.Fatalf("failed to delete %s, err: %v", sha256, err)
