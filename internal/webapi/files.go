@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 )
 
@@ -21,34 +20,18 @@ const (
 // TODO: use HEAD instead.
 func FileExists(sha256 string) (bool, error) {
 
-	url := fileURL + sha256 + "?fields=status"
-	resp, err := http.Get(url)
+	url := fileURL + sha256
+	resp, err := http.Head(url)
 	if err != nil {
 		return false, err
 	}
 
 	if resp.StatusCode == http.StatusNotFound {
-		return false, err
+		return false, nil
 	}
 
 	defer resp.Body.Close()
-	jsonBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return false, err
-	}
-
-	var file map[string]interface{}
-	if err := json.Unmarshal(jsonBody, &file); err != nil {
-		return false, err
-	}
-
-	if val, ok := file["status"]; ok {
-		status := val.(float64)
-		if status == 2 {
-			return true, nil
-		}
-	}
-	return false, nil
+	return true, nil
 }
 
 // ListFiles list all the files in DB.

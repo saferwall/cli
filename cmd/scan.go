@@ -5,7 +5,6 @@
 package cmd
 
 import (
-	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
@@ -39,7 +38,7 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
-		log.Printf("directory [%s] does not exists", filePath)
+		log.Printf("file path [%s] does not exists", filePath)
 		return err
 	}
 
@@ -64,7 +63,7 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 			wp.Submit(func() {
 
 				// Get sha256
-				data, err := ioutil.ReadFile(filename)
+				data, err := os.ReadFile(filename)
 				if err != nil {
 					log.Fatalf("failed to read file: %v", filename)
 				}
@@ -102,7 +101,7 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 	// Sequentially scan the files.
 	for _, filename := range fileList {
 		// Get sha256
-		data, err := ioutil.ReadFile(filename)
+		data, err := os.ReadFile(filename)
 		if err != nil {
 			log.Fatalf("failed to read file: %v", filename)
 		}
