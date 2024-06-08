@@ -308,9 +308,14 @@ func loadCorpus(soukFlag string) ([]string, error) {
 func generateCorpusMarkdown(fam entity.Family, files map[string]entity.File) error {
 	body := new(bytes.Buffer)
 
-	// render the markdown
-	famTemplate := filepath.Join("./templates", "family.md")
+	ex, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	exePath := filepath.Dir(ex)
+	famTemplate := filepath.Join(exePath, "templates", "family.md")
 
+	// render the markdown
 	tpl := template.Must(
 		template.New("family.md").Funcs(sprig.FuncMap()).ParseFiles(famTemplate))
 
@@ -337,7 +342,7 @@ func generateCorpusMarkdown(fam entity.Family, files map[string]entity.File) err
 
 	// write the family README.
 	corpusFamilyReadme := filepath.Join(corpusFamilyPath, "README.md")
-	_, err := util.WriteBytesFile(corpusFamilyReadme, body)
+	_, err = util.WriteBytesFile(corpusFamilyReadme, body)
 	if err != nil {
 		return err
 	}

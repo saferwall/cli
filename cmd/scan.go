@@ -112,7 +112,7 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 		// Check if we the file exists in the DB.
 		exists, err := webapi.FileExists(sha256)
 		if err != nil {
-			log.Fatalf("failed to check existence of file: %v", filename)
+			log.Fatalf("failed to check existence of file: %s, error: %v", filename, err)
 		}
 
 		// Upload the file to be scanned, this will automatically
@@ -120,7 +120,7 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 		if !exists {
 			body, err := webapi.Upload(filename, token)
 			if err != nil {
-				log.Fatalf("failed to upload file: %v", filename)
+				log.Fatalf("failed to upload file: %s, error: %v", filename, err)
 			}
 			log.Print(body)
 			time.Sleep(15 * time.Second)
