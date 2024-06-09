@@ -27,6 +27,8 @@ func init() {
 		"SHA256 of the file to rescan")
 	reScanCmd.Flags().BoolVarP(&asyncScanFlag, "async", "a", false,
 		"Scan files in parallel (default=false)")
+	reScanCmd.Flags().BoolVarP(&skipDetonationFlag, "skipDetonation", "d", false,
+		"Skip detonation (default=false)")
 
 }
 
@@ -41,7 +43,7 @@ func reScanFile(shaList []string, token string, async bool) error {
 		for _, sha256 := range shaList {
 			wp.Submit(func() {
 				log.Printf("rescanning %s", sha256)
-				err := webapi.Rescan(sha256, token)
+				err := webapi.Rescan(sha256, token, skipDetonationFlag)
 				if err != nil {
 					log.Fatalf("failed to rescan file: %v", sha256)
 				}
@@ -57,7 +59,7 @@ func reScanFile(shaList []string, token string, async bool) error {
 	for _, sha256 := range shaList {
 
 		log.Printf("re-scanning %s", sha256)
-		err := webapi.Rescan(sha256, token)
+		err := webapi.Rescan(sha256, token, skipDetonationFlag)
 		if err != nil {
 			log.Fatalf("failed to rescan file: %v", sha256)
 		}
