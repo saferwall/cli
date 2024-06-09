@@ -133,10 +133,19 @@ func Upload(filepath string, authToken string) (string, error) {
 	return body.String(), nil
 }
 
-func Rescan(sha256, authToken string) error {
+func Rescan(sha256, authToken string, skipDetonation bool) error {
 
 	url := fileURL + sha256 + "/rescan"
-	request, err := http.NewRequest("POST", url, nil)
+
+	requestBody, err := json.Marshal(map[string]bool{
+		"skip_detonation": skipDetonation,
+	})
+	if err != nil {
+		return err
+	}
+
+	body := bytes.NewBuffer(requestBody)
+	request, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		return err
 	}
@@ -152,7 +161,7 @@ func Rescan(sha256, authToken string) error {
 	}
 
 	// Read the response.
-	body := &bytes.Buffer{}
+	body = &bytes.Buffer{}
 	_, err = body.ReadFrom(resp.Body)
 	if err != nil {
 		return err

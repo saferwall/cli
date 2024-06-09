@@ -21,6 +21,7 @@ import (
 var filePath string
 var forceRescanFlag bool
 var asyncScanFlag bool
+var skipDetonationFlag bool
 
 func init() {
 	scanCmd.Flags().StringVarP(&filePath, "path", "p", "",
@@ -29,6 +30,8 @@ func init() {
 		"Force rescan the file if it exists (default=false)")
 	scanCmd.Flags().BoolVarP(&asyncScanFlag, "async", "a", false,
 		"Scan files in parallel (default=false)")
+	scanCmd.Flags().BoolVarP(&skipDetonationFlag, "skipDetonation", "d", false,
+		"Skip detonation (default=false)")
 	scanCmd.MarkFlagRequired("path")
 
 }
@@ -84,7 +87,7 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 				} else {
 					// Force rescan the file
 					if forceRescan {
-						err = webapi.Rescan(sha256, token)
+						err = webapi.Rescan(sha256, token, skipDetonationFlag)
 						if err != nil {
 							log.Fatalf("failed to rescan file: %v", filename)
 						}
@@ -127,7 +130,7 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 		} else {
 			// Force re-scan the file
 			if forceRescan {
-				err = webapi.Rescan(sha256, token)
+				err = webapi.Rescan(sha256, token, skipDetonationFlag)
 				if err != nil {
 					log.Fatalf("failed to re-scan file: %v", filename)
 				}
