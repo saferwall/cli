@@ -133,12 +133,16 @@ func Upload(filepath string, authToken string) (string, error) {
 	return body.String(), nil
 }
 
-func Rescan(sha256, authToken string, skipDetonation bool) error {
+func Rescan(sha256, authToken, preferredOS string, skipDetonation bool, timeout int) error {
 
 	url := fileURL + sha256 + "/rescan"
 
-	requestBody, err := json.Marshal(map[string]bool{
+	requestBody, err := json.Marshal(map[string]interface{}{
 		"skip_detonation": skipDetonation,
+		"scan_cfg": map[string]interface{}{
+			"os":      preferredOS,
+			"timeout": timeout,
+		},
 	})
 	if err != nil {
 		return err

@@ -22,22 +22,28 @@ var filePath string
 var forceRescanFlag bool
 var asyncScanFlag bool
 var skipDetonationFlag bool
+var timeoutFlag int
+var osFlag string
 
 func init() {
 	scanCmd.Flags().StringVarP(&filePath, "path", "p", "",
 		"File name or path to scan (required)")
 	scanCmd.Flags().BoolVarP(&forceRescanFlag, "force", "f", false,
-		"Force rescan the file if it exists (default=false)")
+		"Force rescan the file if it exists")
 	scanCmd.Flags().BoolVarP(&asyncScanFlag, "async", "a", false,
-		"Scan files in parallel (default=false)")
+		"Scan files in parallel")
 	scanCmd.Flags().BoolVarP(&skipDetonationFlag, "skipDetonation", "d", false,
-		"Skip detonation (default=false)")
+		"Skip detonation")
+	scanCmd.Flags().IntVarP(&timeoutFlag, "timeout", "t", 15,
+		"Detonation duration in seconds")
+	scanCmd.Flags().StringVarP(&osFlag, "os", "o", "win-10",
+		"Preferred OS for detonation, choice(win-7 | win-10)")
 	scanCmd.MarkFlagRequired("path")
 
 }
 
 // scanFile scans an individual file or a directory.
-func scanFile(filePath, token string, async, forceRescan bool) error {
+func scanFile(filePath, token string) error {
 
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
@@ -54,7 +60,7 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 		return nil
 	})
 
-	if async {
+	if asyncScanFlag {
 
 		// Create a worker pool
 		maxWorkers := runtime.GOMAXPROCS(0)
@@ -86,8 +92,8 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 					}
 				} else {
 					// Force rescan the file
-					if forceRescan {
-						err = webapi.Rescan(sha256, token, skipDetonationFlag)
+					if forceRescanFlag {
+						err = webapi.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
 						if err != nil {
 							log.Fatalf("failed to rescan file: %v", filename)
 						}
@@ -129,8 +135,8 @@ func scanFile(filePath, token string, async, forceRescan bool) error {
 			time.Sleep(15 * time.Second)
 		} else {
 			// Force re-scan the file
-			if forceRescan {
-				err = webapi.Rescan(sha256, token, skipDetonationFlag)
+			if forceRescanFlag {
+				err = webapi.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
 				if err != nil {
 					log.Fatalf("failed to re-scan file: %v", filename)
 				}
@@ -154,6 +160,6 @@ var scanCmd = &cobra.Command{
 			log.Fatalf("failed to login to saferwall web service")
 		}
 
-		scanFile(filePath, token, asyncScanFlag, forceRescanFlag)
+		scanFile(filePath, token)
 	},
 }

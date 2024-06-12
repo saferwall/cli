@@ -26,16 +26,19 @@ func init() {
 	reScanCmd.Flags().StringVarP(&fileHash, "hash", "s", "",
 		"SHA256 of the file to rescan")
 	reScanCmd.Flags().BoolVarP(&asyncScanFlag, "async", "a", false,
-		"Scan files in parallel (default=false)")
+		"Scan files in parallel")
 	reScanCmd.Flags().BoolVarP(&skipDetonationFlag, "skipDetonation", "d", false,
-		"Skip detonation (default=false)")
-
+		"Skip detonation")
+	reScanCmd.Flags().IntVarP(&timeoutFlag, "timeout", "t", 15,
+		"Detonation duration in seconds")
+	reScanCmd.Flags().StringVarP(&osFlag, "os", "o", "win-10",
+		"Preferred OS for detonation, choice(win-7 | win-10)")
 }
 
 // reScanFile re-scans a list of SHA256.
-func reScanFile(shaList []string, token string, async bool) error {
+func reScanFile(shaList []string, token string) error {
 
-	if async {
+	if asyncScanFlag {
 		// Create a worker pool
 		maxWorkers := runtime.GOMAXPROCS(0)
 		wp := workerpool.New(maxWorkers)
@@ -43,7 +46,7 @@ func reScanFile(shaList []string, token string, async bool) error {
 		for _, sha256 := range shaList {
 			wp.Submit(func() {
 				log.Printf("rescanning %s", sha256)
-				err := webapi.Rescan(sha256, token, skipDetonationFlag)
+				err := webapi.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
 				if err != nil {
 					log.Fatalf("failed to rescan file: %v", sha256)
 				}
@@ -59,7 +62,7 @@ func reScanFile(shaList []string, token string, async bool) error {
 	for _, sha256 := range shaList {
 
 		log.Printf("re-scanning %s", sha256)
-		err := webapi.Rescan(sha256, token, skipDetonationFlag)
+		err := webapi.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
 		if err != nil {
 			log.Fatalf("failed to rescan file: %v", sha256)
 		}
@@ -98,6 +101,6 @@ var reScanCmd = &cobra.Command{
 			sha256List = append(sha256List, fileHash)
 		}
 
-		reScanFile(sha256List, token, asyncScanFlag)
+		reScanFile(sha256List, token)
 	},
 }
