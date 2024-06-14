@@ -47,7 +47,7 @@ var listUsersCmd = &cobra.Command{
 	Long:  `Paginate over the list of users in DB or in S3.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		token, err := webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
+		token, err := webapi.Login(cfg.Credentials.URL, cfg.Credentials.Username, cfg.Credentials.Password)
 		if err != nil {
 			log.Fatalf("failed to login to saferwall web service")
 		}
@@ -71,7 +71,7 @@ var listFilesCmd = &cobra.Command{
 
 			var fileContent bytes.Buffer
 
-			token, err := webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
+			token, err := webapi.Login(cfg.Credentials.URL, cfg.Credentials.Username, cfg.Credentials.Password)
 			if err != nil {
 				log.Fatalf("failed to login to saferwall web service")
 			}

@@ -86,7 +86,7 @@ func scanFile(filePath, token string) error {
 
 				// Upload the file to be scanned, this will automatically trigger a scan request.
 				if !exists {
-					_, err = webapi.Upload(filename, token)
+					_, err = webapi.Scan(filename, token, osFlag, skipDetonationFlag, timeoutFlag)
 					if err != nil {
 						log.Fatalf("failed to upload file: %v", filename)
 					}
@@ -127,7 +127,7 @@ func scanFile(filePath, token string) error {
 		// Upload the file to be scanned, this will automatically
 		// trigger a scan request.
 		if !exists {
-			body, err := webapi.Upload(filename, token)
+			body, err := webapi.Scan(filename, token, osFlag, skipDetonationFlag, timeoutFlag)
 			if err != nil {
 				log.Fatalf("failed to upload file: %s, error: %v", filename, err)
 			}
@@ -155,7 +155,7 @@ var scanCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// login to saferwall web service
-		token, err := webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
+		token, err := webapi.Login(cfg.Credentials.URL, cfg.Credentials.Username, cfg.Credentials.Password)
 		if err != nil {
 			log.Fatalf("failed to login to saferwall web service")
 		}

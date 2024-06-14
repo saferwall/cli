@@ -42,7 +42,7 @@ var deleteCmd = &cobra.Command{
 
 		if delFromDB {
 			// Authenticate to Saferwall web service.
-			token, err = webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
+			token, err = webapi.Login(cfg.Credentials.URL, cfg.Credentials.Username, cfg.Credentials.Password)
 			if err != nil {
 				log.Fatalf("failed to login to saferwall web service")
 			}
