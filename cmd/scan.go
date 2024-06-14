@@ -43,7 +43,7 @@ func init() {
 }
 
 // scanFile scans an individual file or a directory.
-func scanFile(filePath, token string) error {
+func scanFile(web webapi.Service, filePath, token string) error {
 
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
@@ -79,21 +79,21 @@ func scanFile(filePath, token string) error {
 				sha256 := util.GetSha256(data)
 
 				// Check if we the file exists in the DB.
-				exists, err := webapi.FileExists(sha256)
+				exists, err := web.FileExists(sha256)
 				if err != nil {
 					log.Fatalf("failed to check existence of file: %v", filename)
 				}
 
 				// Upload the file to be scanned, this will automatically trigger a scan request.
 				if !exists {
-					_, err = webapi.Scan(filename, token, osFlag, skipDetonationFlag, timeoutFlag)
+					_, err = web.Scan(filename, token, osFlag, skipDetonationFlag, timeoutFlag)
 					if err != nil {
 						log.Fatalf("failed to upload file: %v", filename)
 					}
 				} else {
 					// Force rescan the file
 					if forceRescanFlag {
-						err = webapi.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
+						err = web.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
 						if err != nil {
 							log.Fatalf("failed to rescan file: %v", filename)
 						}
@@ -119,7 +119,7 @@ func scanFile(filePath, token string) error {
 		log.Printf("processing %s", sha256)
 
 		// Check if we the file exists in the DB.
-		exists, err := webapi.FileExists(sha256)
+		exists, err := web.FileExists(sha256)
 		if err != nil {
 			log.Fatalf("failed to check existence of file: %s, error: %v", filename, err)
 		}
@@ -127,7 +127,7 @@ func scanFile(filePath, token string) error {
 		// Upload the file to be scanned, this will automatically
 		// trigger a scan request.
 		if !exists {
-			body, err := webapi.Scan(filename, token, osFlag, skipDetonationFlag, timeoutFlag)
+			body, err := web.Scan(filename, token, osFlag, skipDetonationFlag, timeoutFlag)
 			if err != nil {
 				log.Fatalf("failed to upload file: %s, error: %v", filename, err)
 			}
@@ -136,7 +136,7 @@ func scanFile(filePath, token string) error {
 		} else {
 			// Force re-scan the file
 			if forceRescanFlag {
-				err = webapi.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
+				err = web.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
 				if err != nil {
 					log.Fatalf("failed to re-scan file: %v", filename)
 				}
@@ -155,11 +155,12 @@ var scanCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// login to saferwall web service
-		token, err := webapi.Login(cfg.Credentials.URL, cfg.Credentials.Username, cfg.Credentials.Password)
+		webSvc := webapi.New(cfg.Credentials.URL)
+		token, err := webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 		if err != nil {
 			log.Fatalf("failed to login to saferwall web service")
 		}
 
-		scanFile(filePath, token)
+		scanFile(webSvc, filePath, token)
 	},
 }

@@ -10,29 +10,32 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 
 	"github.com/saferwall/saferwall-cli/internal/entity"
 )
 
-const (
-	fileURL = "https://api.saferwall.com/v1/files/"
-)
-
-func newfileUploadRequest(uri, fieldname, filename string, params []byte) (*http.Request, error) {
+func (s Service) newfileUploadRequest(fieldname, filename string, params map[string]string) (*http.Request, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
-	body := bytes.NewBuffer(params)
+	body := new(bytes.Buffer)
 	writer := multipart.NewWriter(body)
+	for key, val := range params {
+		err := writer.WriteField(key, val)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	part, err := writer.CreateFormFile(fieldname, filepath.Base(filename))
 	if err != nil {
 		return nil, err
@@ -47,16 +50,16 @@ func newfileUploadRequest(uri, fieldname, filename string, params []byte) (*http
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", uri, body)
+	req, err := http.NewRequest("POST", s.filesURL, body)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	return req, err
 }
 
 // FileExists determines file existence.
 // TODO: use HEAD instead.
-func FileExists(sha256 string) (bool, error) {
+func (s Service) FileExists(sha256 string) (bool, error) {
 
-	url := fileURL + sha256
+	url := s.filesURL + sha256
 	resp, err := http.Head(url)
 	if err != nil {
 		return false, err
@@ -71,10 +74,10 @@ func FileExists(sha256 string) (bool, error) {
 }
 
 // ListFiles list all the files in DB.
-func ListFiles(authToken string, page int) (*Pages, error) {
+func (s Service) ListFiles(authToken string, page int) (*Pages, error) {
 
 	var pages Pages
-	url := fmt.Sprintf("%s?per_page=%d&page=%d&fields=sha256", fileURL, 1000, page)
+	url := fmt.Sprintf("%s?per_page=%d&page=%d&fields=sha256", s.filesURL, 1000, page)
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -116,21 +119,15 @@ func ListFiles(authToken string, page int) (*Pages, error) {
 
 }
 
-func Scan(filepath string, authToken, preferredOS string, skipDetonation bool, timeout int) (string, error) {
-
-	params, err := json.Marshal(map[string]interface{}{
-		"skip_detonation": skipDetonation,
-		"scan_cfg": map[string]interface{}{
-			"os":      preferredOS,
-			"timeout": timeout,
-		},
-	})
-	if err != nil {
-		return "", err
+func (s Service) Scan(filepath string, authToken, preferredOS string, skipDetonation bool, timeout int) (string, error) {
+	params := map[string]string{
+		"skip_detonation": strconv.FormatBool(skipDetonation),
+		"os":              preferredOS,
+		"timeout":         strconv.Itoa(timeout),
 	}
 
 	// Create a new file upload request.
-	request, err := newfileUploadRequest(fileURL, "file", filepath, params)
+	request, err := s.newfileUploadRequest("file", filepath, params)
 	if err != nil {
 		return "", err
 	}
@@ -155,9 +152,9 @@ func Scan(filepath string, authToken, preferredOS string, skipDetonation bool, t
 	return body.String(), nil
 }
 
-func Rescan(sha256, authToken, preferredOS string, skipDetonation bool, timeout int) error {
+func (s Service) Rescan(sha256, authToken, preferredOS string, skipDetonation bool, timeout int) error {
 
-	url := fileURL + sha256 + "/rescan"
+	url := s.filesURL + sha256 + "/rescan"
 
 	requestBody, err := json.Marshal(map[string]interface{}{
 		"skip_detonation": skipDetonation,
@@ -199,9 +196,9 @@ func Rescan(sha256, authToken, preferredOS string, skipDetonation bool, timeout 
 }
 
 // GetFile retrieves the file report given a sha256.
-func GetFile(sha256 string, file *entity.File) error {
+func (s Service) GetFile(sha256 string, file *entity.File) error {
 
-	url := fileURL + sha256
+	url := s.filesURL + sha256
 	client := &http.Client{}
 	client.Timeout = time.Second * 10
 
@@ -217,7 +214,7 @@ func GetFile(sha256 string, file *entity.File) error {
 	}
 
 	defer resp.Body.Close()
-	d, err := ioutil.ReadAll(resp.Body)
+	d, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
@@ -225,9 +222,9 @@ func GetFile(sha256 string, file *entity.File) error {
 	return json.Unmarshal(d, &file)
 }
 
-func Download(sha256, authToken string) (*bytes.Buffer, error) {
+func (s Service) Download(sha256, authToken string) (*bytes.Buffer, error) {
 
-	url := fileURL + sha256 + "/download"
+	url := s.filesURL + sha256 + "/download"
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
@@ -254,9 +251,9 @@ func Download(sha256, authToken string) (*bytes.Buffer, error) {
 	return body, nil
 }
 
-func Delete(sha256, authToken string) error {
+func (s Service) Delete(sha256, authToken string) error {
 
-	url := fileURL + sha256
+	url := s.filesURL + sha256
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err

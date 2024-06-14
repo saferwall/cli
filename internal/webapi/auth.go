@@ -22,9 +22,8 @@ type Pages struct {
 	Items      interface{} `json:"items"`
 }
 
-func Login(url, username, password string) (string, error) {
+func (s Service) Login(username, password string) (string, error) {
 
-	authURL := url + "/v1/auth/login/"
 	requestBody, err := json.Marshal(map[string]string{
 		"username": username,
 		"password": password,
@@ -38,7 +37,7 @@ func Login(url, username, password string) (string, error) {
 		Timeout: timeout,
 	}
 	body := bytes.NewBuffer(requestBody)
-	request, err := http.NewRequest(http.MethodPost, authURL, body)
+	request, err := http.NewRequest(http.MethodPost, s.authURL, body)
 	if err != nil {
 		return "", err
 	}

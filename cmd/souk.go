@@ -79,6 +79,8 @@ func init() {
 func addFamilyToSouk(familyYamlPath string) error {
 	log.Printf("processing %s", familyYamlPath)
 
+	webSvc := webapi.New(cfg.Credentials.URL)
+
 	familyData, err := util.ReadAll(familyYamlPath)
 	if err != nil {
 		log.Fatalf("failed to read yaml file, err: %v ", err)
@@ -112,7 +114,7 @@ func addFamilyToSouk(familyYamlPath string) error {
 		log.Printf("processing %s | %s | %s | %s",
 			sample.SHA256, sample.Platform, sample.FileFormat, sample.Category)
 
-		err = webapi.GetFile(sample.SHA256, &file)
+		err = webSvc.GetFile(sample.SHA256, &file)
 		if err != nil {
 			log.Fatalf("failed to read doc from saferwall web service: %v", err)
 		}
@@ -178,6 +180,8 @@ func generateMalwareSoukDB() error {
 		initMalwareSouk()
 	}
 
+	webSvc := webapi.New(cfg.Credentials.URL)
+
 	yamlCorpus, err := loadCorpus(soukFlag)
 	if err != nil {
 		log.Fatalf("failed to load corpus, err: %v ", err)
@@ -209,7 +213,7 @@ func generateMalwareSoukDB() error {
 			log.Printf("processing %s | %s | %s | %s",
 				sample.SHA256, sample.Platform, sample.FileFormat, sample.Category)
 
-			err = webapi.GetFile(sample.SHA256, &file)
+			err = webSvc.GetFile(sample.SHA256, &file)
 			if err != nil {
 				log.Fatalf("failed to read doc from saferwall web service: %v", err)
 			}

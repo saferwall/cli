@@ -55,9 +55,11 @@ var downloadCmd = &cobra.Command{
 		var sto s.Storage
 		var err error
 
+		webSvc := webapi.New(cfg.Credentials.URL)
+
 		if useWebAPIs {
 			// Authenticate to Saferwall web service.
-			token, err = webapi.Login(cfg.Credentials.URL, cfg.Credentials.Username, cfg.Credentials.Password)
+			token, err = webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 			if err != nil {
 				log.Fatalf("failed to login to saferwall web service")
 			}
@@ -89,7 +91,7 @@ var downloadCmd = &cobra.Command{
 
 		// download a single binary.
 		if sha256Flag != "" {
-			download(sha256Flag, token, sto)
+			download(sha256Flag, token, webSvc, sto)
 		} else if txtFlag != "" {
 			// Download a list of sha256 hashes.
 			data, err := util.ReadAll(txtFlag)
@@ -100,7 +102,7 @@ var downloadCmd = &cobra.Command{
 			sha256list := strings.Split(string(data), "\n")
 			for _, sha256 := range sha256list {
 				if len(sha256) >= 64 {
-					err = download(sha256, token, sto)
+					err = download(sha256, token, webSvc, sto)
 					if err != nil {
 						log.Fatalf("failed to download sample (%s): %v", sha256, err)
 					}
@@ -116,7 +118,7 @@ var downloadCmd = &cobra.Command{
 	},
 }
 
-func download(sha256, token string, sto s.Storage) error {
+func download(sha256, token string, web webapi.Service, sto s.Storage) error {
 
 	var err error
 	var data bytes.Buffer
@@ -125,7 +127,7 @@ func download(sha256, token string, sto s.Storage) error {
 	log.Printf("downloading %s to %s", sha256, outputFlag)
 
 	if token != "" {
-		dataContent, err := webapi.Download(sha256, token)
+		dataContent, err := web.Download(sha256, token)
 		if err != nil {
 			log.Fatalf("failed to download %s, err: %v", sha256, err)
 			return err

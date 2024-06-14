@@ -36,7 +36,7 @@ func init() {
 }
 
 // reScanFile re-scans a list of SHA256.
-func reScanFile(shaList []string, token string) error {
+func reScanFile(web webapi.Service, shaList []string, token string) error {
 
 	if asyncScanFlag {
 		// Create a worker pool
@@ -46,7 +46,7 @@ func reScanFile(shaList []string, token string) error {
 		for _, sha256 := range shaList {
 			wp.Submit(func() {
 				log.Printf("rescanning %s", sha256)
-				err := webapi.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
+				err := web.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
 				if err != nil {
 					log.Fatalf("failed to rescan file: %v", sha256)
 				}
@@ -62,7 +62,7 @@ func reScanFile(shaList []string, token string) error {
 	for _, sha256 := range shaList {
 
 		log.Printf("re-scanning %s", sha256)
-		err := webapi.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
+		err := web.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
 		if err != nil {
 			log.Fatalf("failed to rescan file: %v", sha256)
 		}
@@ -83,7 +83,8 @@ var reScanCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Login to saferwall web service
-		token, err := webapi.Login(cfg.Credentials.URL, cfg.Credentials.Username, cfg.Credentials.Password)
+		webSvc := webapi.New(cfg.Credentials.URL)
+		token, err := webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 		if err != nil {
 			log.Fatalf("failed to login to saferwall web service")
 		}
@@ -101,6 +102,6 @@ var reScanCmd = &cobra.Command{
 			sha256List = append(sha256List, fileHash)
 		}
 
-		reScanFile(sha256List, token)
+		reScanFile(webSvc, sha256List, token)
 	},
 }
