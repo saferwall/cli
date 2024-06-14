@@ -36,13 +36,15 @@ var deleteCmd = &cobra.Command{
 	Long:  `Delete a binary sample given a sha256.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
+		svc := webapi.New(cfg.Credentials.URL)
+
 		var token string
 		var sto s.Storage
 		var err error
 
 		if delFromDB {
 			// Authenticate to Saferwall web service.
-			token, err = webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
+			token, err = svc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 			if err != nil {
 				log.Fatalf("failed to login to saferwall web service")
 			}
@@ -76,7 +78,7 @@ var deleteCmd = &cobra.Command{
 
 		// Delete a single binary.
 		if sha256Flag != "" {
-			delete(sha256Flag, token, sto)
+			delete(svc, sha256Flag, token, sto)
 		} else if txtFlag != "" {
 			// Delete a list of sha256 hashes.
 			data, err := util.ReadAll(txtFlag)
@@ -87,19 +89,19 @@ var deleteCmd = &cobra.Command{
 			sha256list := strings.Split(string(data), "\n")
 			for _, sha256 := range sha256list {
 				if len(sha256) >= 64 {
-					delete(sha256, token, sto)
+					delete(svc, sha256, token, sto)
 				}
 			}
 		}
 	},
 }
 
-func delete(sha256, token string, sto s.Storage) error {
+func delete(svc webapi.Service, sha256, token string, sto s.Storage) error {
 
 	log.Printf("deleting %s", sha256)
 
 	if token != "" {
-		err := webapi.Delete(sha256, token)
+		err := svc.Delete(sha256, token)
 		if err != nil {
 			log.Fatalf("failed to delete %s, err: %v", sha256, err)
 			return err

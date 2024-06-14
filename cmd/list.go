@@ -47,7 +47,8 @@ var listUsersCmd = &cobra.Command{
 	Long:  `Paginate over the list of users in DB or in S3.`,
 	Run: func(cmd *cobra.Command, args []string) {
 
-		token, err := webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
+		webSvc := webapi.New(cfg.Credentials.URL)
+		token, err := webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 		if err != nil {
 			log.Fatalf("failed to login to saferwall web service")
 		}
@@ -70,14 +71,14 @@ var listFilesCmd = &cobra.Command{
 		if walkDBFlag {
 
 			var fileContent bytes.Buffer
-
-			token, err := webapi.Login(cfg.Credentials.Username, cfg.Credentials.Password)
+			webSvc := webapi.New(cfg.Credentials.URL)
+			token, err := webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 			if err != nil {
 				log.Fatalf("failed to login to saferwall web service")
 			}
 
 			// Do an initial call to get the page's count.
-			pages, err := webapi.ListFiles(token, 1)
+			pages, err := webSvc.ListFiles(token, 1)
 			if err != nil {
 				log.Fatalf("failed to list files: %v", err)
 			}
@@ -87,7 +88,7 @@ var listFilesCmd = &cobra.Command{
 			for page := 1; page <= pages.PageCount; page++ {
 
 				log.Printf("getting files for page: %d", page)
-				results, err := webapi.ListFiles(token, page)
+				results, err := webSvc.ListFiles(token, page)
 				if err != nil {
 					log.Fatalf("failed to list files: %v", err)
 				}
