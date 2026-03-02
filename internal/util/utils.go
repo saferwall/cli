@@ -7,48 +7,11 @@ package util
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"fmt"
 	"io"
-	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"runtime"
 )
-
-func check(e error) {
-	if e != nil {
-		log.Fatal(e)
-	}
-}
-
-func exitErrorf(msg string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, msg+"\n", args...)
-	os.Exit(1)
-}
-
-func difference(a, b []string) []string {
-	mb := make(map[string]struct{}, len(b))
-	for _, x := range b {
-		mb[x] = struct{}{}
-	}
-	var diff []string
-	for _, x := range a {
-		if _, found := mb[x]; !found {
-			diff = append(diff, x)
-		}
-	}
-	return diff
-}
-
-func stringInSlice(a string, list []string) bool {
-	for _, b := range list {
-		if b == a {
-			return true
-		}
-	}
-	return false
-}
 
 // GetSha256 returns SHA256 hash.
 func GetSha256(b []byte) string {
@@ -96,8 +59,7 @@ func WriteBytesFile(filename string, r io.Reader) (int, error) {
 	}
 	defer file.Close()
 
-	// Read for the reader bytes to file
-	b, err := ioutil.ReadAll(r)
+	b, err := io.ReadAll(r)
 	if err != nil {
 		return 0, err
 	}

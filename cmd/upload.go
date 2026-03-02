@@ -10,8 +10,8 @@ import (
 	"log"
 	"path/filepath"
 
-	s "github.com/saferwall/saferwall-cli/internal/storage"
-	"github.com/saferwall/saferwall-cli/internal/util"
+	s "github.com/saferwall/cli/internal/storage"
+	"github.com/saferwall/cli/internal/util"
 	"github.com/spf13/cobra"
 )
 
@@ -69,6 +69,5 @@ var uploadCmd = &cobra.Command{
 				log.Fatalf("failed to upload file %s: %v", filePath, err)
 			}
 		}
-
 	},
 }

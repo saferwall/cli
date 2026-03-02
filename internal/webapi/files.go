@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/saferwall/saferwall-cli/internal/entity"
+	"github.com/saferwall/cli/internal/entity"
 )
 
 func (s Service) newfileUploadRequest(fieldname, filename string, params map[string]string) (*http.Request, error) {
@@ -101,7 +101,7 @@ func (s Service) ListFiles(authToken string, page int) (*Pages, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		var jsonBody map[string]interface{}
+		var jsonBody map[string]any
 		err = json.Unmarshal(body.Bytes(), &jsonBody)
 		if err != nil {
 			return nil, err
@@ -119,9 +119,9 @@ func (s Service) ListFiles(authToken string, page int) (*Pages, error) {
 
 }
 
-func (s Service) Scan(filepath string, authToken, preferredOS string, skipDetonation bool, timeout int) (string, error) {
+func (s Service) Scan(filepath string, authToken, preferredOS string, enableDetonation bool, timeout int) (string, error) {
 	params := map[string]string{
-		"skip_detonation": strconv.FormatBool(skipDetonation),
+		"skip_detonation": strconv.FormatBool(!enableDetonation),
 		"os":              preferredOS,
 		"timeout":         strconv.Itoa(timeout),
 	}
@@ -152,13 +152,13 @@ func (s Service) Scan(filepath string, authToken, preferredOS string, skipDetona
 	return body.String(), nil
 }
 
-func (s Service) Rescan(sha256, authToken, preferredOS string, skipDetonation bool, timeout int) error {
+func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation bool, timeout int) error {
 
 	url := s.filesURL + sha256 + "/rescan"
 
-	requestBody, err := json.Marshal(map[string]interface{}{
-		"skip_detonation": skipDetonation,
-		"scan_cfg": map[string]interface{}{
+	requestBody, err := json.Marshal(map[string]any{
+		"skip_detonation": !enableDetonation,
+		"scan_cfg": map[string]any{
 			"os":      preferredOS,
 			"timeout": timeout,
 		},

@@ -15,11 +15,11 @@ import (
 
 // Pages represents a paginated list of data items.
 type Pages struct {
-	Page       int         `json:"page"`
-	PerPage    int         `json:"per_page"`
-	PageCount  int         `json:"page_count"`
-	TotalCount int         `json:"total_count"`
-	Items      interface{} `json:"items"`
+	Page       int `json:"page"`
+	PerPage    int `json:"per_page"`
+	PageCount  int `json:"page_count"`
+	TotalCount int `json:"total_count"`
+	Items      any `json:"items"`
 }
 
 func (s Service) Login(username, password string) (string, error) {

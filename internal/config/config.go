@@ -67,7 +67,7 @@ type Config struct {
 
 // Load returns an application configuration which is populated
 // from the given configuration file.
-func Load(path, env string, c interface{}) error {
+func Load(path, env string, c any) error {
 
 	// Adding our TOML config file.
 	viper.AddConfigPath(path)

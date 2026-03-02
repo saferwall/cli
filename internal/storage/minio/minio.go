@@ -34,7 +34,7 @@ func New(endpoint, accessKey, secretKey string) (Service, error) {
 		Secure: false,
 	})
 	if err != nil {
-		return Service{}, nil
+		return Service{}, err
 	}
 
 	return Service{s3Client}, nil

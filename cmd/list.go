@@ -10,10 +10,10 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/saferwall/saferwall-cli/internal/entity"
-	s "github.com/saferwall/saferwall-cli/internal/storage"
-	"github.com/saferwall/saferwall-cli/internal/util"
-	"github.com/saferwall/saferwall-cli/internal/webapi"
+	"github.com/saferwall/cli/internal/entity"
+	s "github.com/saferwall/cli/internal/storage"
+	"github.com/saferwall/cli/internal/util"
+	"github.com/saferwall/cli/internal/webapi"
 	"github.com/spf13/cobra"
 )
 
@@ -94,7 +94,7 @@ var listFilesCmd = &cobra.Command{
 				}
 
 				var listSha256 []string
-				files := results.Items.([]interface{})
+				files := results.Items.([]any)
 				for _, fileIf := range files {
 					file := entity.File{}
 					b, _ := json.Marshal(fileIf)
