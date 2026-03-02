@@ -46,10 +46,11 @@ func init() {
 }
 
 type scanSummary struct {
-	SHA256        string     `json:"sha256"`
-	FileFormat    string     `json:"file_format"`
-	FileExtension string     `json:"file_extension"`
-	MultiAV       *avSummary `json:"multiav,omitempty"`
+	SHA256         string     `json:"sha256"`
+	Classification string     `json:"classification"`
+	FileFormat     string     `json:"file_format"`
+	FileExtension  string     `json:"file_extension"`
+	MultiAV        *avSummary `json:"multiav,omitempty"`
 }
 
 type avSummary struct {
@@ -59,9 +60,10 @@ type avSummary struct {
 
 func buildScanSummary(file entity.File) scanSummary {
 	s := scanSummary{
-		SHA256:        file.SHA256,
-		FileFormat:    file.Format,
-		FileExtension: file.Extension,
+		SHA256:         file.SHA256,
+		Classification: file.Classification,
+		FileFormat:     file.Format,
+		FileExtension:  file.Extension,
 	}
 
 	if lastScan, ok := file.MultiAV["last_scan"].(map[string]any); ok {

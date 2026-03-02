@@ -278,6 +278,7 @@ func (m *scanModel) maybeQuitOrNext() tea.Cmd {
 var (
 	styleSuccess = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))  // green
 	styleError   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))  // red
+	styleWarning = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))  // yellow
 	styleDim     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))  // dim gray
 	styleLabel   = lipgloss.NewStyle().Foreground(lipgloss.Color("12")) // blue
 )
@@ -306,6 +307,7 @@ func (m scanModel) View() string {
 					fmtStr += "/" + f.result.FileExtension
 				}
 				line += "  " + fmtStr
+				line += "  " + renderClassification(f.result.Classification)
 				if f.result.MultiAV != nil {
 					line += "  " + fmt.Sprintf("%d/%d engines",
 						f.result.MultiAV.Positives, f.result.MultiAV.EnginesCount)
@@ -318,6 +320,19 @@ func (m scanModel) View() string {
 		}
 	}
 	return s
+}
+
+func renderClassification(c string) string {
+	switch c {
+	case "malicious":
+		return styleError.Render(c)
+	case "clean":
+		return styleSuccess.Render(c)
+	case "unknown":
+		return styleWarning.Render(c)
+	default:
+		return styleDim.Render(c)
+	}
 }
 
 func truncSha(sha string) string {
