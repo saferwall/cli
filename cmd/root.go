@@ -5,17 +5,12 @@
 package cmd
 
 import (
-	"fmt"
 	"log"
 	"path/filepath"
 
 	"github.com/saferwall/cli/internal/config"
 	"github.com/saferwall/cli/internal/util"
 	"github.com/spf13/cobra"
-)
-
-const (
-	version = "0.5.0"
 )
 
 var cfg config.Config
@@ -38,16 +33,7 @@ upload, scan samples from your drive, or download samples.
 For more details see the github repo at https://github.com/saferwall
 `,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("You are using version %s\n", version)
-	},
-}
-
-var versionCmd = &cobra.Command{
-	Use:   "version",
-	Short: "Print the version number",
-	Long:  "Print the version number",
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("You are using version %s\n", version)
+		cmd.Help()
 	},
 }
 

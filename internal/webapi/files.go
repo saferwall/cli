@@ -191,7 +191,6 @@ func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation 
 	}
 
 	resp.Body.Close()
-	fmt.Println(body)
 	return nil
 }
 
@@ -220,6 +219,30 @@ func (s Service) GetFile(sha256 string, file *entity.File) error {
 	}
 
 	return json.Unmarshal(d, &file)
+}
+
+// GetFileStatus retrieves only the status field of a file.
+func (s Service) GetFileStatus(sha256 string) (int, error) {
+	url := s.filesURL + sha256 + "?fields=status"
+	client := &http.Client{Timeout: 10 * time.Second}
+
+	resp, err := client.Get(url)
+	if err != nil {
+		return 0, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return 0, fmt.Errorf("failed to get file status: HTTP %d", resp.StatusCode)
+	}
+
+	var result struct {
+		Status int `json:"status"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return 0, err
+	}
+	return result.Status, nil
 }
 
 func (s Service) Download(sha256, authToken string) (*bytes.Buffer, error) {

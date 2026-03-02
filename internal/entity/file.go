@@ -33,6 +33,7 @@ type File struct {
 	Extension        string            `json:"file_extension,omitempty"`
 	BehaviorReportID string            `json:"behavior_report_id,omitempty"`
 	Status           int               `json:"status,omitempty"`
+	Classification   string            `json:"classification,omitempty"`
 }
 
 // Submission represents a file submission.

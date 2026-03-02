@@ -15,8 +15,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var uploadFilePath string
+
 func init() {
-	uploadCmd.Flags().StringVarP(&filePath, "path", "p", "",
+	uploadCmd.Flags().StringVarP(&uploadFilePath, "path", "p", "",
 		"Destination directory for the file to upload.")
 }
 
@@ -50,7 +52,7 @@ var uploadCmd = &cobra.Command{
 			return
 		}
 
-		filePaths, err := util.WalkAllFilesInDir(filePath)
+		filePaths, err := util.WalkAllFilesInDir(uploadFilePath)
 		if err != nil {
 			log.Fatalf("failed to walk directory %s: %v", filePaths, err)
 		}

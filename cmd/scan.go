@@ -5,46 +5,85 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
-	"github.com/gammazero/workerpool"
-	"github.com/saferwall/cli/internal/util"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/saferwall/cli/internal/entity"
 	"github.com/saferwall/cli/internal/webapi"
 	"github.com/spf13/cobra"
 )
 
+const (
+	statusQueued    = 1
+	statusScanning  = 2
+	statusCompleted = 3
+
+	pollInterval = 5 * time.Second
+)
+
 // Used for flags.
-var filePath string
 var forceRescanFlag bool
-var asyncScanFlag bool
+var parallelFlag int
 var enableDetonationFlag bool
 var timeoutFlag int
 var osFlag string
 
 func init() {
-	scanCmd.Flags().StringVarP(&filePath, "path", "p", "",
-		"File name or path to scan (required)")
 	scanCmd.Flags().BoolVarP(&forceRescanFlag, "force", "f", false,
 		"Force rescan the file if it exists")
-	scanCmd.Flags().BoolVarP(&asyncScanFlag, "async", "a", false,
-		"Scan files in parallel")
+	scanCmd.Flags().IntVarP(&parallelFlag, "parallel", "p", 1,
+		"Number of files to scan in parallel")
 	scanCmd.Flags().BoolVarP(&enableDetonationFlag, "enableDetonation", "d", false,
 		"Skip detonation")
 	scanCmd.Flags().IntVarP(&timeoutFlag, "timeout", "t", 15,
 		"Detonation duration in seconds")
 	scanCmd.Flags().StringVarP(&osFlag, "os", "o", "win-10",
 		"Preferred OS for detonation, choice(win-7 | win-10)")
-	scanCmd.MarkFlagRequired("path")
+}
 
+type scanSummary struct {
+	SHA256         string     `json:"sha256"`
+	Classification string     `json:"classification"`
+	FileFormat     string     `json:"file_format"`
+	FileExtension  string     `json:"file_extension"`
+	MultiAV        *avSummary `json:"multiav,omitempty"`
+}
+
+type avSummary struct {
+	Positives    int `json:"positives"`
+	EnginesCount int `json:"engines_count"`
+}
+
+func buildScanSummary(file entity.File) scanSummary {
+	s := scanSummary{
+		SHA256:         file.SHA256,
+		Classification: file.Classification,
+		FileFormat:     file.Format,
+		FileExtension:  file.Extension,
+	}
+
+	if lastScan, ok := file.MultiAV["last_scan"].(map[string]any); ok {
+		if stats, ok := lastScan["stats"].(map[string]any); ok {
+			av := &avSummary{}
+			if v, ok := stats["positives"].(float64); ok {
+				av.Positives = int(v)
+			}
+			if v, ok := stats["engines_count"].(float64); ok {
+				av.EnginesCount = int(v)
+			}
+			s.MultiAV = av
+		}
+	}
+
+	return s
 }
 
 // scanFile scans an individual file or a directory.
 func scanFile(web webapi.Service, filePath, token string) error {
-
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
 		log.Printf("file path [%s] does not exists", filePath)
@@ -60,98 +99,20 @@ func scanFile(web webapi.Service, filePath, token string) error {
 		return nil
 	})
 
-	if asyncScanFlag {
-
-		// Create a worker pool
-		maxWorkers := runtime.GOMAXPROCS(0)
-		wp := workerpool.New(maxWorkers)
-
-		// Upload files
-		for _, filename := range fileList {
-			filename := filename
-			wp.Submit(func() {
-
-				// Get sha256
-				data, err := os.ReadFile(filename)
-				if err != nil {
-					log.Fatalf("failed to read file: %v", filename)
-				}
-				sha256 := util.GetSha256(data)
-
-				// Check if we the file exists in the DB.
-				exists, err := web.FileExists(sha256)
-				if err != nil {
-					log.Fatalf("failed to check existence of file: %v", filename)
-				}
-
-				// Upload the file to be scanned, this will automatically trigger a scan request.
-				if !exists {
-					_, err = web.Scan(filename, token, osFlag, enableDetonationFlag, timeoutFlag)
-					if err != nil {
-						log.Fatalf("failed to upload file: %v", filename)
-					}
-				} else {
-					// Force rescan the file
-					if forceRescanFlag {
-						err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
-						if err != nil {
-							log.Fatalf("failed to rescan file: %v", filename)
-						}
-					}
-				}
-
-				time.Sleep(2 * time.Second)
-			})
-		}
-		wp.StopWait()
-		return nil
+	// Launch TUI scan with the configured parallelism.
+	model := newScanModel(fileList, web, token, parallelFlag)
+	p := tea.NewProgram(model)
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("TUI error: %w", err)
 	}
-
-	// Sequentially scan the files.
-	for _, filename := range fileList {
-		// Get sha256
-		data, err := os.ReadFile(filename)
-		if err != nil {
-			log.Fatalf("failed to read file: %v", filename)
-		}
-		sha256 := util.GetSha256(data)
-
-		log.Printf("processing %s", sha256)
-
-		// Check if we the file exists in the DB.
-		exists, err := web.FileExists(sha256)
-		if err != nil {
-			log.Fatalf("failed to check existence of file: %s, error: %v", filename, err)
-		}
-
-		// Upload the file to be scanned, this will automatically
-		// trigger a scan request.
-		if !exists {
-			body, err := web.Scan(filename, token, osFlag, enableDetonationFlag, timeoutFlag)
-			if err != nil {
-				log.Fatalf("failed to upload file: %s, error: %v", filename, err)
-			}
-			log.Print(body)
-			time.Sleep(10 * time.Second)
-		} else {
-			// Force re-scan the file
-			if forceRescanFlag {
-				err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
-				if err != nil {
-					log.Fatalf("failed to re-scan file: %v", filename)
-				}
-			}
-		}
-
-	}
-
 	return nil
 }
 
 var scanCmd = &cobra.Command{
-	Use:   "scan",
+	Use:   "scan <path>",
 	Short: "Submit a scan request of a file using its hash",
 	Long:  `Scans the file`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// login to saferwall web service
@@ -161,6 +122,6 @@ var scanCmd = &cobra.Command{
 			log.Fatalf("failed to login to saferwall web service")
 		}
 
-		scanFile(webSvc, filePath, token)
+		scanFile(webSvc, args[0], token)
 	},
 }

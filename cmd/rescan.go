@@ -6,27 +6,27 @@ package cmd
 
 import (
 	"log"
-	"runtime"
 	"strings"
+	"sync"
 	"time"
 
-	"github.com/gammazero/workerpool"
 	"github.com/saferwall/cli/internal/util"
 	"github.com/saferwall/cli/internal/webapi"
 	"github.com/spf13/cobra"
 )
 
 var (
-	fileHash string
+	rescanFilePath string
+	fileHash       string
 )
 
 func init() {
-	reScanCmd.Flags().StringVarP(&filePath, "path", "p", "",
+	reScanCmd.Flags().StringVarP(&rescanFilePath, "path", "p", "",
 		"File name or path containing list of SHA256 to scan")
 	reScanCmd.Flags().StringVarP(&fileHash, "hash", "s", "",
 		"SHA256 of the file to rescan")
-	reScanCmd.Flags().BoolVarP(&asyncScanFlag, "async", "a", false,
-		"Scan files in parallel")
+	reScanCmd.Flags().IntVar(&parallelFlag, "parallel", 1,
+		"Number of files to rescan in parallel")
 	reScanCmd.Flags().BoolVarP(&enableDetonationFlag, "enableDetonation", "d", false,
 		"Skip detonation")
 	reScanCmd.Flags().IntVarP(&timeoutFlag, "timeout", "t", 15,
@@ -37,42 +37,23 @@ func init() {
 
 // reScanFile re-scans a list of SHA256.
 func reScanFile(web webapi.Service, shaList []string, token string) error {
+	sem := make(chan struct{}, parallelFlag)
+	var wg sync.WaitGroup
 
-	if asyncScanFlag {
-		// Create a worker pool
-		maxWorkers := runtime.GOMAXPROCS(0)
-		wp := workerpool.New(maxWorkers)
-
-		for _, sha256 := range shaList {
-			wp.Submit(func() {
-				log.Printf("rescanning %s", sha256)
-				err := web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
-				if err != nil {
-					log.Fatalf("failed to rescan file: %v", sha256)
-				}
-
-				time.Sleep(2 * time.Second)
-			})
-		}
-		wp.StopWait()
-		return nil
-	}
-
-	// Sequentially scan the files.
 	for _, sha256 := range shaList {
-
-		log.Printf("re-scanning %s", sha256)
-		err := web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
-		if err != nil {
-			log.Fatalf("failed to rescan file: %v", sha256)
-		}
-
-		if len(shaList) > 1 {
-			time.Sleep(10 * time.Second)
-		}
-
+		sem <- struct{}{}
+		wg.Add(1)
+		go func() {
+			defer func() { <-sem; wg.Done() }()
+			log.Printf("rescanning %s", sha256)
+			err := web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
+			if err != nil {
+				log.Printf("failed to rescan file: %v", sha256)
+			}
+			time.Sleep(2 * time.Second)
+		}()
 	}
-
+	wg.Wait()
 	return nil
 }
 
@@ -91,8 +72,8 @@ var reScanCmd = &cobra.Command{
 
 		// Read the txt file containing the list of hashes to rescan.
 		var sha256List []string
-		if filePath != "" {
-			data, err := util.ReadAll(filePath)
+		if rescanFilePath != "" {
+			data, err := util.ReadAll(rescanFilePath)
 			if err != nil {
 				log.Fatalf("failed to read txt file")
 			}
