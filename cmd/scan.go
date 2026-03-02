@@ -104,7 +104,6 @@ func scanFile(web webapi.Service, filePath, token string) error {
 
 	// Sequentially scan the files.
 	for _, filename := range fileList {
-		// Get sha256
 		data, err := os.ReadFile(filename)
 		if err != nil {
 			log.Fatalf("failed to read file: %v", filename)
@@ -119,7 +118,6 @@ func scanFile(web webapi.Service, filePath, token string) error {
 			log.Fatalf("failed to check existence of file: %s, error: %v", filename, err)
 		}
 
-		// Upload the file to be scanned, this will automatically
 		// trigger a scan request.
 		if !exists {
 			body, err := web.Scan(filename, token, osFlag, enableDetonationFlag, timeoutFlag)
