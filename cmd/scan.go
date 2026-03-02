@@ -5,6 +5,8 @@
 package cmd
 
 import (
+	"encoding/json"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
@@ -12,9 +14,19 @@ import (
 	"time"
 
 	"github.com/gammazero/workerpool"
+	"github.com/saferwall/cli/internal/entity"
 	"github.com/saferwall/cli/internal/util"
 	"github.com/saferwall/cli/internal/webapi"
 	"github.com/spf13/cobra"
+)
+
+const (
+	statusQueued    = 1
+	statusScanning  = 2
+	statusCompleted = 3
+
+	pollInterval = 5 * time.Second
+	pollTimeout  = 5 * time.Minute
 )
 
 // Used for flags.
@@ -35,6 +47,39 @@ func init() {
 		"Detonation duration in seconds")
 	scanCmd.Flags().StringVarP(&osFlag, "os", "o", "win-10",
 		"Preferred OS for detonation, choice(win-7 | win-10)")
+}
+
+// waitForScanCompletion polls the API until the scan completes or times out,
+// then pretty-prints the full file report as JSON.
+func waitForScanCompletion(web webapi.Service, sha256 string) error {
+	deadline := time.Now().Add(pollTimeout)
+	for {
+		status, err := web.GetFileStatus(sha256)
+		if err != nil {
+			return fmt.Errorf("failed to poll scan status: %w", err)
+		}
+
+		if status == statusCompleted {
+			var file entity.File
+			if err := web.GetFile(sha256, &file); err != nil {
+				return fmt.Errorf("failed to get file report: %w", err)
+			}
+			pretty, err := json.MarshalIndent(file, "", "  ")
+			if err != nil {
+				return fmt.Errorf("failed to marshal file report: %w", err)
+			}
+			fmt.Println(string(pretty))
+			return nil
+		}
+
+		if time.Now().After(deadline) {
+			log.Printf("scan timed out for %s, check later", sha256)
+			return nil
+		}
+
+		log.Printf("waiting for scan to complete (status=%d)...", status)
+		time.Sleep(pollInterval)
+	}
 }
 
 // scanFile scans an individual file or a directory.
@@ -120,22 +165,20 @@ func scanFile(web webapi.Service, filePath, token string) error {
 
 		// trigger a scan request.
 		if !exists {
-			body, err := web.Scan(filename, token, osFlag, enableDetonationFlag, timeoutFlag)
+			_, err := web.Scan(filename, token, osFlag, enableDetonationFlag, timeoutFlag)
 			if err != nil {
 				log.Fatalf("failed to upload file: %s, error: %v", filename, err)
 			}
-			log.Print(body)
-			if len(fileList) > 1 {
-				time.Sleep(10 * time.Second)
-			}
-		} else {
+		} else if forceRescanFlag {
 			// Force re-scan the file
-			if forceRescanFlag {
-				err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
-				if err != nil {
-					log.Fatalf("failed to re-scan file: %v", filename)
-				}
+			err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
+			if err != nil {
+				log.Fatalf("failed to re-scan file: %v", filename)
 			}
+		}
+
+		if err := waitForScanCompletion(web, sha256); err != nil {
+			log.Fatalf("error waiting for scan: %v", err)
 		}
 
 	}
