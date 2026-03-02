@@ -9,13 +9,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/gammazero/workerpool"
 	"github.com/saferwall/cli/internal/entity"
-	"github.com/saferwall/cli/internal/util"
 	"github.com/saferwall/cli/internal/webapi"
 	"github.com/spf13/cobra"
 )
@@ -30,7 +27,7 @@ const (
 
 // Used for flags.
 var forceRescanFlag bool
-var asyncScanFlag bool
+var parallelFlag int
 var enableDetonationFlag bool
 var timeoutFlag int
 var osFlag string
@@ -38,8 +35,8 @@ var osFlag string
 func init() {
 	scanCmd.Flags().BoolVarP(&forceRescanFlag, "force", "f", false,
 		"Force rescan the file if it exists")
-	scanCmd.Flags().BoolVarP(&asyncScanFlag, "async", "a", false,
-		"Scan files in parallel")
+	scanCmd.Flags().IntVarP(&parallelFlag, "parallel", "p", 1,
+		"Number of files to scan in parallel")
 	scanCmd.Flags().BoolVarP(&enableDetonationFlag, "enableDetonation", "d", false,
 		"Skip detonation")
 	scanCmd.Flags().IntVarP(&timeoutFlag, "timeout", "t", 15,
@@ -101,55 +98,8 @@ func scanFile(web webapi.Service, filePath, token string) error {
 		return nil
 	})
 
-	if asyncScanFlag {
-
-		// Create a worker pool
-		maxWorkers := runtime.GOMAXPROCS(0)
-		wp := workerpool.New(maxWorkers)
-
-		// Upload files
-		for _, filename := range fileList {
-			wp.Submit(func() {
-
-				// Get sha256
-				data, err := os.ReadFile(filename)
-				if err != nil {
-					log.Fatalf("failed to read file: %v", filename)
-				}
-				sha256 := util.GetSha256(data)
-
-				// Check if we the file exists in the DB.
-				exists, err := web.FileExists(sha256)
-				if err != nil {
-					log.Fatalf("failed to check existence of file: %v", filename)
-				}
-
-				// Upload the file to be scanned, this will automatically trigger a scan request.
-				if !exists {
-					_, err = web.Scan(filename, token, osFlag, enableDetonationFlag, timeoutFlag)
-					if err != nil {
-						log.Fatalf("failed to upload file: %v", filename)
-					}
-				} else {
-					// Force rescan the file
-					if forceRescanFlag {
-						err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
-						if err != nil {
-							log.Fatalf("failed to rescan file: %v", filename)
-						}
-					}
-				}
-
-				time.Sleep(2 * time.Second)
-			})
-		}
-		wp.StopWait()
-		return nil
-	}
-
-	// Launch TUI for sequential scan.
-	model := newScanModel(fileList, web, token)
-	model.files[0].state = stateUploading
+	// Launch TUI scan with the configured parallelism.
+	model := newScanModel(fileList, web, token, parallelFlag)
 	p := tea.NewProgram(model)
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("TUI error: %w", err)

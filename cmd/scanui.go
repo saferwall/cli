@@ -41,10 +41,11 @@ type fileRow struct {
 
 // Top-level bubbletea model.
 type scanModel struct {
-	files []fileRow
-	web   webapi.Service
-	token string
-	done  bool
+	files    []fileRow
+	web      webapi.Service
+	token    string
+	parallel int
+	done     bool
 }
 
 // --- Messages ---
@@ -131,7 +132,10 @@ func delayedPollCmd(index int, web webapi.Service, sha256 string) tea.Cmd {
 
 // --- Model interface ---
 
-func newScanModel(files []string, web webapi.Service, token string) scanModel {
+func newScanModel(files []string, web webapi.Service, token string, parallel int) scanModel {
+	if parallel < 1 {
+		parallel = 1
+	}
 	rows := make([]fileRow, len(files))
 	for i, f := range files {
 		s := spinner.New()
@@ -143,9 +147,10 @@ func newScanModel(files []string, web webapi.Service, token string) scanModel {
 		}
 	}
 	return scanModel{
-		files: rows,
-		web:   web,
-		token: token,
+		files:    rows,
+		web:      web,
+		token:    token,
+		parallel: parallel,
 	}
 }
 
@@ -154,12 +159,16 @@ func (m scanModel) Init() tea.Cmd {
 		return tea.Quit
 	}
 
-	// Start uploading the first file and tick all spinners.
-	cmds := []tea.Cmd{
-		uploadFileCmd(0, m.web, m.files[0].filename, m.token),
+	// Launch up to m.parallel uploads concurrently.
+	n := min(m.parallel, len(m.files))
+	var cmds []tea.Cmd
+	for i := range n {
+		m.files[i].state = stateUploading
+		cmds = append(cmds,
+			uploadFileCmd(i, m.web, m.files[i].filename, m.token),
+			m.files[i].spinner.Tick,
+		)
 	}
-	// Tick spinners for file 0.
-	cmds = append(cmds, m.files[0].spinner.Tick)
 	return tea.Batch(cmds...)
 }
 
@@ -188,7 +197,7 @@ func (m scanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.files[i].state = stateError
 			m.files[i].err = msg.err
-			return m, m.maybeQuitOrNext(i)
+			return m, m.maybeQuitOrNext()
 		}
 		m.files[i].sha256 = msg.sha256
 		m.files[i].state = stateScanning
@@ -199,7 +208,7 @@ func (m scanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.err != nil {
 			m.files[i].state = stateError
 			m.files[i].err = msg.err
-			return m, m.maybeQuitOrNext(i)
+			return m, m.maybeQuitOrNext()
 		}
 		if msg.status == statusCompleted {
 			cmds = append(cmds, fetchResultCmd(i, m.web, m.files[i].sha256))
@@ -217,21 +226,25 @@ func (m scanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.files[i].state = stateDone
 			m.files[i].result = &msg.summary
 		}
-		cmd := m.maybeQuitOrNext(i)
+		cmd := m.maybeQuitOrNext()
 		return m, cmd
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
-// maybeQuitOrNext starts the next file upload (sequential mode) or quits if all done.
-func (m *scanModel) maybeQuitOrNext(_ int) tea.Cmd {
-	// Check if all files are done.
+// maybeQuitOrNext launches pending uploads up to the parallel limit, or quits if all done.
+func (m *scanModel) maybeQuitOrNext() tea.Cmd {
+	// Count in-flight files (uploading or scanning).
+	inFlight := 0
 	allDone := true
 	for _, f := range m.files {
-		if f.state != stateDone && f.state != stateError {
+		switch f.state {
+		case stateUploading, stateScanning:
+			inFlight++
 			allDone = false
-			break
+		case statePending:
+			allDone = false
 		}
 	}
 	if allDone {
@@ -239,17 +252,24 @@ func (m *scanModel) maybeQuitOrNext(_ int) tea.Cmd {
 		return tea.Quit
 	}
 
-	// Sequential mode: start the next pending file.
+	// Launch pending files up to the parallel limit.
+	var cmds []tea.Cmd
 	for i := range m.files {
+		if inFlight >= m.parallel {
+			break
+		}
 		if m.files[i].state == statePending {
 			m.files[i].state = stateUploading
-			return tea.Batch(
+			cmds = append(cmds,
 				uploadFileCmd(i, m.web, m.files[i].filename, m.token),
 				m.files[i].spinner.Tick,
 			)
+			inFlight++
 		}
 	}
-
+	if len(cmds) > 0 {
+		return tea.Batch(cmds...)
+	}
 	return nil
 }
 
