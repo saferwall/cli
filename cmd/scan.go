@@ -84,7 +84,6 @@ func buildScanSummary(file entity.File) scanSummary {
 
 // scanFile scans an individual file or a directory.
 func scanFile(web webapi.Service, filePath, token string) error {
-
 	_, err := os.Stat(filePath)
 	if os.IsNotExist(err) {
 		log.Printf("file path [%s] does not exists", filePath)

@@ -191,7 +191,6 @@ func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation 
 	}
 
 	resp.Body.Close()
-	fmt.Println(body)
 	return nil
 }
 
