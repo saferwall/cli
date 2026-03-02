@@ -17,11 +17,12 @@ import (
 )
 
 var (
-	fileHash string
+	rescanFilePath string
+	fileHash       string
 )
 
 func init() {
-	reScanCmd.Flags().StringVarP(&filePath, "path", "p", "",
+	reScanCmd.Flags().StringVarP(&rescanFilePath, "path", "p", "",
 		"File name or path containing list of SHA256 to scan")
 	reScanCmd.Flags().StringVarP(&fileHash, "hash", "s", "",
 		"SHA256 of the file to rescan")
@@ -91,8 +92,8 @@ var reScanCmd = &cobra.Command{
 
 		// Read the txt file containing the list of hashes to rescan.
 		var sha256List []string
-		if filePath != "" {
-			data, err := util.ReadAll(filePath)
+		if rescanFilePath != "" {
+			data, err := util.ReadAll(rescanFilePath)
 			if err != nil {
 				log.Fatalf("failed to read txt file")
 			}

@@ -18,7 +18,6 @@ import (
 )
 
 // Used for flags.
-var filePath string
 var forceRescanFlag bool
 var asyncScanFlag bool
 var enableDetonationFlag bool
@@ -26,8 +25,6 @@ var timeoutFlag int
 var osFlag string
 
 func init() {
-	scanCmd.Flags().StringVarP(&filePath, "path", "p", "",
-		"File name or path to scan (required)")
 	scanCmd.Flags().BoolVarP(&forceRescanFlag, "force", "f", false,
 		"Force rescan the file if it exists")
 	scanCmd.Flags().BoolVarP(&asyncScanFlag, "async", "a", false,
@@ -38,8 +35,6 @@ func init() {
 		"Detonation duration in seconds")
 	scanCmd.Flags().StringVarP(&osFlag, "os", "o", "win-10",
 		"Preferred OS for detonation, choice(win-7 | win-10)")
-	scanCmd.MarkFlagRequired("path")
-
 }
 
 // scanFile scans an individual file or a directory.
@@ -149,9 +144,10 @@ func scanFile(web webapi.Service, filePath, token string) error {
 }
 
 var scanCmd = &cobra.Command{
-	Use:   "scan",
+	Use:   "scan <path>",
 	Short: "Submit a scan request of a file using its hash",
 	Long:  `Scans the file`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// login to saferwall web service
@@ -161,6 +157,6 @@ var scanCmd = &cobra.Command{
 			log.Fatalf("failed to login to saferwall web service")
 		}
 
-		scanFile(webSvc, filePath, token)
+		scanFile(webSvc, args[0], token)
 	},
 }
