@@ -49,6 +49,41 @@ func init() {
 		"Preferred OS for detonation, choice(win-7 | win-10)")
 }
 
+type scanSummary struct {
+	SHA256        string     `json:"sha256"`
+	FileFormat    string     `json:"file_format"`
+	FileExtension string     `json:"file_extension"`
+	MultiAV       *avSummary `json:"multiav,omitempty"`
+}
+
+type avSummary struct {
+	Positives    int `json:"positives"`
+	EnginesCount int `json:"engines_count"`
+}
+
+func buildScanSummary(file entity.File) scanSummary {
+	s := scanSummary{
+		SHA256:        file.SHA256,
+		FileFormat:    file.Format,
+		FileExtension: file.Extension,
+	}
+
+	if lastScan, ok := file.MultiAV["last_scan"].(map[string]any); ok {
+		if stats, ok := lastScan["stats"].(map[string]any); ok {
+			av := &avSummary{}
+			if v, ok := stats["positives"].(float64); ok {
+				av.Positives = int(v)
+			}
+			if v, ok := stats["engines_count"].(float64); ok {
+				av.EnginesCount = int(v)
+			}
+			s.MultiAV = av
+		}
+	}
+
+	return s
+}
+
 // waitForScanCompletion polls the API until the scan completes or times out,
 // then pretty-prints the full file report as JSON.
 func waitForScanCompletion(web webapi.Service, sha256 string) error {
@@ -64,9 +99,11 @@ func waitForScanCompletion(web webapi.Service, sha256 string) error {
 			if err := web.GetFile(sha256, &file); err != nil {
 				return fmt.Errorf("failed to get file report: %w", err)
 			}
-			pretty, err := json.MarshalIndent(file, "", "  ")
+
+			summary := buildScanSummary(file)
+			pretty, err := json.MarshalIndent(summary, "", "  ")
 			if err != nil {
-				return fmt.Errorf("failed to marshal file report: %w", err)
+				return fmt.Errorf("failed to marshal scan summary: %w", err)
 			}
 			fmt.Println(string(pretty))
 			return nil
