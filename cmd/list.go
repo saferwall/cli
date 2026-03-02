@@ -94,7 +94,7 @@ var listFilesCmd = &cobra.Command{
 				}
 
 				var listSha256 []string
-				files := results.Items.([]interface{})
+				files := results.Items.([]any)
 				for _, fileIf := range files {
 					file := entity.File{}
 					b, _ := json.Marshal(fileIf)

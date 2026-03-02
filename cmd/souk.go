@@ -239,14 +239,14 @@ func initMalwareSouk() error {
 		return err
 	}
 
-	var m map[string]interface{}
+	var m map[string]any
 	err = yaml.Unmarshal(soukYamlCfg, &m)
 	if err != nil {
 		log.Printf("failed to unmarshal yaml string: %v", err)
 		return err
 	}
 
-	for k, v := range m["criteria"].(map[interface{}]interface{}) {
+	for k, v := range m["criteria"].(map[any]any) {
 		criteriaName := k.(string)
 		criteriaDirName := filepath.Join(soukFlag, criteriaName)
 		os.RemoveAll(criteriaDirName)
@@ -255,7 +255,7 @@ func initMalwareSouk() error {
 		}
 
 		// family does not have sub criteria.
-		if _, ok := v.([]interface{}); !ok {
+		if _, ok := v.([]any); !ok {
 			// drop the README.md
 			filename := filepath.Join(criteriaDirName, "README.md")
 			data := fmt.Sprintf("# Browse Corpus by %s:", criteriaName)
@@ -267,7 +267,7 @@ func initMalwareSouk() error {
 			continue
 		}
 
-		for _, c := range v.([]interface{}) {
+		for _, c := range v.([]any) {
 			subCriteriaName := c.(string)
 			subCriteriaDirName := filepath.Join(criteriaDirName, subCriteriaName)
 			if !util.MkDir(subCriteriaDirName) {

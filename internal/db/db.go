@@ -86,7 +86,7 @@ func (db *DB) Exists(ctx context.Context, key string, docExists *bool) error {
 
 // Query executes a N1QL query.
 func (db *DB) Query(ctx context.Context, statement string,
-	args map[string]interface{}, val *interface{}) error {
+	args map[string]any, val *any) error {
 
 	results, err := db.Cluster.Query(statement, &gocb.QueryOptions{
 		NamedParameters: args, Adhoc: true})
@@ -94,9 +94,9 @@ func (db *DB) Query(ctx context.Context, statement string,
 		return err
 	}
 
-	var rows []interface{}
+	var rows []any
 	for results.Next() {
-		var row interface{}
+		var row any
 		err := results.Row(&row)
 		if err != nil {
 			return err
@@ -113,7 +113,7 @@ func (db *DB) Query(ctx context.Context, statement string,
 }
 
 // Get retrieves the document using its key.
-func (db *DB) Get(ctx context.Context, key string, model interface{}) error {
+func (db *DB) Get(ctx context.Context, key string, model any) error {
 
 	// Performs a fetch operation against the collection.
 	getResult, err := db.Collection.Get(key, &gocb.GetOptions{})
@@ -134,13 +134,13 @@ func (db *DB) Get(ctx context.Context, key string, model interface{}) error {
 }
 
 // Create saves a new document into the collection.
-func (db *DB) Create(ctx context.Context, key string, val interface{}) error {
+func (db *DB) Create(ctx context.Context, key string, val any) error {
 	_, err := db.Collection.Insert(key, val, &gocb.InsertOptions{})
 	return err
 }
 
 // Update updates a document in the collection.
-func (db *DB) Update(ctx context.Context, key string, val interface{}) error {
+func (db *DB) Update(ctx context.Context, key string, val any) error {
 	_, err := db.Collection.Replace(key, val, &gocb.ReplaceOptions{})
 	return err
 }
@@ -148,7 +148,7 @@ func (db *DB) Update(ctx context.Context, key string, val interface{}) error {
 // Patch performs a sub document in the collection. Sub documents operations
 // may be quicker and more network-efficient than full-document operations.
 func (db *DB) Patch(ctx context.Context, key string, path string,
-	val interface{}) error {
+	val any) error {
 
 	mops := []gocb.MutateInSpec{
 		gocb.UpsertSpec(path, val, &gocb.UpsertSpecOptions{}),
@@ -166,7 +166,7 @@ func (db *DB) Delete(ctx context.Context, key string) error {
 
 // Count retrieves the total number of documents.
 func (db *DB) Count(ctx context.Context, statement string,
-	args map[string]interface{}, val *int) error {
+	args map[string]any, val *int) error {
 
 	results, err := db.Cluster.Query(statement, &gocb.QueryOptions{
 		NamedParameters: args, Adhoc: true})
@@ -187,7 +187,7 @@ func (db *DB) Count(ctx context.Context, statement string,
 
 // Lookup query the document for certain path(s); these path(s) are then returned.
 func (db *DB) Lookup(ctx context.Context, key string, paths []string,
-	val interface{}) error {
+	val any) error {
 
 	ops := []gocb.LookupInSpec{}
 	getSpecOptions := gocb.GetSpecOptions{}
@@ -201,18 +201,18 @@ func (db *DB) Lookup(ctx context.Context, key string, paths []string,
 	}
 
 	for i, path := range paths {
-		var content interface{}
+		var content any
 		err = getResult.ContentAt(uint(i), &content)
 		if err != nil {
 			return err
 		}
 
-		m := make(map[string]interface{})
+		m := make(map[string]any)
 		keys := strings.Split(path, ".")
 		if len(keys) > 0 {
 			m[keys[len(keys)-1]] = content
 			for idx := len(keys) - 2; idx >= 0; idx-- {
-				mn := make(map[string]interface{})
+				mn := make(map[string]any)
 				mn[keys[idx]] = m
 				m = mn
 			}

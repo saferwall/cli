@@ -91,7 +91,7 @@ func ListUsersWithIndex(authToken string, page, perPage int) ([]entity.User, err
 		return nil, err
 	}
 
-	usersMap := pages.Items.([]interface{})
+	usersMap := pages.Items.([]any)
 
 	var users []entity.User
 	for _, u := range usersMap {

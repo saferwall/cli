@@ -101,7 +101,7 @@ func (s Service) ListFiles(authToken string, page int) (*Pages, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		var jsonBody map[string]interface{}
+		var jsonBody map[string]any
 		err = json.Unmarshal(body.Bytes(), &jsonBody)
 		if err != nil {
 			return nil, err
@@ -156,9 +156,9 @@ func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation 
 
 	url := s.filesURL + sha256 + "/rescan"
 
-	requestBody, err := json.Marshal(map[string]interface{}{
+	requestBody, err := json.Marshal(map[string]any{
 		"skip_detonation": !enableDetonation,
-		"scan_cfg": map[string]interface{}{
+		"scan_cfg": map[string]any{
 			"os":      preferredOS,
 			"timeout": timeout,
 		},
