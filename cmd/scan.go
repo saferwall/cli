@@ -132,7 +132,7 @@ func scanFile(web webapi.Service, filePath, token string) error {
 				log.Fatalf("failed to upload file: %s, error: %v", filename, err)
 			}
 			log.Print(body)
-			time.Sleep(3 * time.Second)
+			time.Sleep(10 * time.Second)
 		} else {
 			// Force re-scan the file
 			if forceRescanFlag {
