@@ -38,7 +38,6 @@ func init() {
 
 // reScanFile re-scans a list of SHA256.
 func reScanFile(web webapi.Service, shaList []string, token string) error {
-
 	if asyncScanFlag {
 		// Create a worker pool
 		maxWorkers := runtime.GOMAXPROCS(0)
@@ -61,7 +60,6 @@ func reScanFile(web webapi.Service, shaList []string, token string) error {
 
 	// Sequentially scan the files.
 	for _, sha256 := range shaList {
-
 		log.Printf("re-scanning %s", sha256)
 		err := web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
 		if err != nil {
@@ -71,7 +69,6 @@ func reScanFile(web webapi.Service, shaList []string, token string) error {
 		if len(shaList) > 1 {
 			time.Sleep(10 * time.Second)
 		}
-
 	}
 
 	return nil
