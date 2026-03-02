@@ -5,7 +5,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -13,6 +12,7 @@ import (
 	"runtime"
 	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gammazero/workerpool"
 	"github.com/saferwall/cli/internal/entity"
 	"github.com/saferwall/cli/internal/util"
@@ -26,7 +26,6 @@ const (
 	statusCompleted = 3
 
 	pollInterval = 5 * time.Second
-	pollTimeout  = 5 * time.Minute
 )
 
 // Used for flags.
@@ -84,41 +83,6 @@ func buildScanSummary(file entity.File) scanSummary {
 	return s
 }
 
-// waitForScanCompletion polls the API until the scan completes or times out,
-// then pretty-prints the full file report as JSON.
-func waitForScanCompletion(web webapi.Service, sha256 string) error {
-	deadline := time.Now().Add(pollTimeout)
-	for {
-		status, err := web.GetFileStatus(sha256)
-		if err != nil {
-			return fmt.Errorf("failed to poll scan status: %w", err)
-		}
-
-		if status == statusCompleted {
-			var file entity.File
-			if err := web.GetFile(sha256, &file); err != nil {
-				return fmt.Errorf("failed to get file report: %w", err)
-			}
-
-			summary := buildScanSummary(file)
-			pretty, err := json.MarshalIndent(summary, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal scan summary: %w", err)
-			}
-			fmt.Println(string(pretty))
-			return nil
-		}
-
-		if time.Now().After(deadline) {
-			log.Printf("scan timed out for %s, check later", sha256)
-			return nil
-		}
-
-		log.Printf("waiting for scan to complete (status=%d)...", status)
-		time.Sleep(pollInterval)
-	}
-}
-
 // scanFile scans an individual file or a directory.
 func scanFile(web webapi.Service, filePath, token string) error {
 
@@ -145,7 +109,6 @@ func scanFile(web webapi.Service, filePath, token string) error {
 
 		// Upload files
 		for _, filename := range fileList {
-			filename := filename
 			wp.Submit(func() {
 
 				// Get sha256
@@ -184,42 +147,13 @@ func scanFile(web webapi.Service, filePath, token string) error {
 		return nil
 	}
 
-	// Sequentially scan the files.
-	for _, filename := range fileList {
-		data, err := os.ReadFile(filename)
-		if err != nil {
-			log.Fatalf("failed to read file: %v", filename)
-		}
-		sha256 := util.GetSha256(data)
-
-		log.Printf("processing %s", sha256)
-
-		// Check if the file exists in the DB.
-		exists, err := web.FileExists(sha256)
-		if err != nil {
-			log.Fatalf("failed to check existence of file: %s, error: %v", filename, err)
-		}
-
-		// trigger a scan request.
-		if !exists {
-			_, err := web.Scan(filename, token, osFlag, enableDetonationFlag, timeoutFlag)
-			if err != nil {
-				log.Fatalf("failed to upload file: %s, error: %v", filename, err)
-			}
-		} else if forceRescanFlag {
-			// Force re-scan the file
-			err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
-			if err != nil {
-				log.Fatalf("failed to re-scan file: %v", filename)
-			}
-		}
-
-		if err := waitForScanCompletion(web, sha256); err != nil {
-			log.Fatalf("error waiting for scan: %v", err)
-		}
-
+	// Launch TUI for sequential scan.
+	model := newScanModel(fileList, web, token)
+	model.files[0].state = stateUploading
+	p := tea.NewProgram(model)
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("TUI error: %w", err)
 	}
-
 	return nil
 }
 
