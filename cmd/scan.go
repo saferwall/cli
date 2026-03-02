@@ -21,7 +21,7 @@ import (
 var filePath string
 var forceRescanFlag bool
 var asyncScanFlag bool
-var skipDetonationFlag bool
+var enableDetonationFlag bool
 var timeoutFlag int
 var osFlag string
 
@@ -32,7 +32,7 @@ func init() {
 		"Force rescan the file if it exists")
 	scanCmd.Flags().BoolVarP(&asyncScanFlag, "async", "a", false,
 		"Scan files in parallel")
-	scanCmd.Flags().BoolVarP(&skipDetonationFlag, "skipDetonation", "d", false,
+	scanCmd.Flags().BoolVarP(&enableDetonationFlag, "enableDetonation", "d", false,
 		"Skip detonation")
 	scanCmd.Flags().IntVarP(&timeoutFlag, "timeout", "t", 15,
 		"Detonation duration in seconds")
@@ -86,14 +86,14 @@ func scanFile(web webapi.Service, filePath, token string) error {
 
 				// Upload the file to be scanned, this will automatically trigger a scan request.
 				if !exists {
-					_, err = web.Scan(filename, token, osFlag, skipDetonationFlag, timeoutFlag)
+					_, err = web.Scan(filename, token, osFlag, enableDetonationFlag, timeoutFlag)
 					if err != nil {
 						log.Fatalf("failed to upload file: %v", filename)
 					}
 				} else {
 					// Force rescan the file
 					if forceRescanFlag {
-						err = web.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
+						err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
 						if err != nil {
 							log.Fatalf("failed to rescan file: %v", filename)
 						}
@@ -127,7 +127,7 @@ func scanFile(web webapi.Service, filePath, token string) error {
 		// Upload the file to be scanned, this will automatically
 		// trigger a scan request.
 		if !exists {
-			body, err := web.Scan(filename, token, osFlag, skipDetonationFlag, timeoutFlag)
+			body, err := web.Scan(filename, token, osFlag, enableDetonationFlag, timeoutFlag)
 			if err != nil {
 				log.Fatalf("failed to upload file: %s, error: %v", filename, err)
 			}
@@ -136,7 +136,7 @@ func scanFile(web webapi.Service, filePath, token string) error {
 		} else {
 			// Force re-scan the file
 			if forceRescanFlag {
-				err = web.Rescan(sha256, token, osFlag, skipDetonationFlag, timeoutFlag)
+				err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
 				if err != nil {
 					log.Fatalf("failed to re-scan file: %v", filename)
 				}

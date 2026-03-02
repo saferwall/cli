@@ -119,9 +119,9 @@ func (s Service) ListFiles(authToken string, page int) (*Pages, error) {
 
 }
 
-func (s Service) Scan(filepath string, authToken, preferredOS string, skipDetonation bool, timeout int) (string, error) {
+func (s Service) Scan(filepath string, authToken, preferredOS string, enableDetonation bool, timeout int) (string, error) {
 	params := map[string]string{
-		"skip_detonation": strconv.FormatBool(skipDetonation),
+		"skip_detonation": strconv.FormatBool(!enableDetonation),
 		"os":              preferredOS,
 		"timeout":         strconv.Itoa(timeout),
 	}
@@ -152,12 +152,12 @@ func (s Service) Scan(filepath string, authToken, preferredOS string, skipDetona
 	return body.String(), nil
 }
 
-func (s Service) Rescan(sha256, authToken, preferredOS string, skipDetonation bool, timeout int) error {
+func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation bool, timeout int) error {
 
 	url := s.filesURL + sha256 + "/rescan"
 
 	requestBody, err := json.Marshal(map[string]interface{}{
-		"skip_detonation": skipDetonation,
+		"skip_detonation": !enableDetonation,
 		"scan_cfg": map[string]interface{}{
 			"os":      preferredOS,
 			"timeout": timeout,
