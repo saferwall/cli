@@ -11,7 +11,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/saferwall/saferwall-cli/internal/util"
+	"github.com/saferwall/cli/internal/util"
 )
 
 // Service provides abstraction to cloud object storage.

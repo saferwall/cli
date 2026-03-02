@@ -9,8 +9,8 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/saferwall/saferwall-cli/internal/config"
-	"github.com/saferwall/saferwall-cli/internal/util"
+	"github.com/saferwall/cli/internal/config"
+	"github.com/saferwall/cli/internal/util"
 	"github.com/spf13/cobra"
 )
 

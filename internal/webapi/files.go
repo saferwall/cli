@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/saferwall/saferwall-cli/internal/entity"
+	"github.com/saferwall/cli/internal/entity"
 )
 
 func (s Service) newfileUploadRequest(fieldname, filename string, params map[string]string) (*http.Request, error) {

@@ -10,10 +10,10 @@ import (
 	"encoding/json"
 	"log"
 
-	"github.com/saferwall/saferwall-cli/internal/entity"
-	s "github.com/saferwall/saferwall-cli/internal/storage"
-	"github.com/saferwall/saferwall-cli/internal/util"
-	"github.com/saferwall/saferwall-cli/internal/webapi"
+	"github.com/saferwall/cli/internal/entity"
+	s "github.com/saferwall/cli/internal/storage"
+	"github.com/saferwall/cli/internal/util"
+	"github.com/saferwall/cli/internal/webapi"
 	"github.com/spf13/cobra"
 )
 

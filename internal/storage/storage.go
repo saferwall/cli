@@ -10,9 +10,9 @@ import (
 	"io"
 	"time"
 
-	"github.com/saferwall/saferwall-cli/internal/storage/local"
-	"github.com/saferwall/saferwall-cli/internal/storage/minio"
-	"github.com/saferwall/saferwall-cli/internal/storage/s3"
+	"github.com/saferwall/cli/internal/storage/local"
+	"github.com/saferwall/cli/internal/storage/minio"
+	"github.com/saferwall/cli/internal/storage/s3"
 )
 
 var (

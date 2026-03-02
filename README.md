@@ -7,7 +7,7 @@ A CLI tool to interact with Saferwall.com to download samples, scan or re-scan n
 You can either download pre-built binaries or build the tool yourself.
 
 ```sh
-go install github.com/saferwall/saferwall-cli
+go install github.com/saferwall/cli
 ```
 
 

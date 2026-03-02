@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/saferwall/saferwall-cli/internal/entity"
+	"github.com/saferwall/cli/internal/entity"
 )
 
 const (

@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/gammazero/workerpool"
-	"github.com/saferwall/saferwall-cli/internal/util"
-	"github.com/saferwall/saferwall-cli/internal/webapi"
+	"github.com/saferwall/cli/internal/util"
+	"github.com/saferwall/cli/internal/webapi"
 	"github.com/spf13/cobra"
 )
 
@@ -132,7 +132,7 @@ func scanFile(web webapi.Service, filePath, token string) error {
 				log.Fatalf("failed to upload file: %s, error: %v", filename, err)
 			}
 			log.Print(body)
-			time.Sleep(15 * time.Second)
+			time.Sleep(3 * time.Second)
 		} else {
 			// Force re-scan the file
 			if forceRescanFlag {

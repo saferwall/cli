@@ -5,7 +5,7 @@
 package main
 
 import (
-	"github.com/saferwall/saferwall-cli/cmd"
+	"github.com/saferwall/cli/cmd"
 )
 
 func main() {

@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/gammazero/workerpool"
-	"github.com/saferwall/saferwall-cli/internal/util"
-	"github.com/saferwall/saferwall-cli/internal/webapi"
+	"github.com/saferwall/cli/internal/util"
+	"github.com/saferwall/cli/internal/webapi"
 	"github.com/spf13/cobra"
 )
 
