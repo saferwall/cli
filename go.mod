@@ -8,7 +8,6 @@ require (
 	github.com/couchbase/gocb/v2 v2.12.0
 	github.com/gammazero/workerpool v1.2.1
 	github.com/minio/minio-go/v7 v7.0.98
-	github.com/opencoff/go-walk v0.6.6
 	github.com/saferwall/saferwall-cli v0.4.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
