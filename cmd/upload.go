@@ -50,17 +50,20 @@ var uploadCmd = &cobra.Command{
 			return
 		}
 
-		filePaths, err := util.WalkAllFilesInDir(filePath)
-		if err != nil {
-			log.Fatalf("failed to walk directory %s: %v", filePaths, err)
-		}
-
-		for _, filePath := range filePaths {
-			fileContent, err := util.ReadAll(filePath)
-			if err != nil {
-				log.Fatalf("failed to read file %s,: %v", filePath, err)
+		ch, errch := util.WalkFilesAsync([]string{filePath})
+		go func() {
+			for err := range errch {
+				log.Printf("walk: error: %s", err)
 			}
-			sha256 := filepath.Base(filePath)
+		}()
+
+		for r := range ch {
+			log.Printf("%s: %d bytes", r.Path, r.Stat.Size())
+			fileContent, err := util.ReadAll(r.Path)
+			if err != nil {
+				log.Fatalf("failed to read file %s,: %v", r.Path, err)
+			}
+			sha256 := filepath.Base(r.Path)
 			r := bytes.NewReader(fileContent)
 
 			log.Printf("uploading %s", sha256)
@@ -69,6 +72,5 @@ var uploadCmd = &cobra.Command{
 				log.Fatalf("failed to upload file %s: %v", filePath, err)
 			}
 		}
-
 	},
 }

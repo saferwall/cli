@@ -8,6 +8,7 @@ require (
 	github.com/couchbase/gocb/v2 v2.6.3
 	github.com/gammazero/workerpool v1.1.3
 	github.com/minio/minio-go/v7 v7.0.52
+	github.com/opencoff/go-walk v0.6.6
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.16.0
 	golang.org/x/net v0.19.0

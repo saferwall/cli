@@ -14,6 +14,8 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+
+	"github.com/opencoff/go-walk"
 )
 
 func check(e error) {
@@ -168,6 +170,19 @@ func WalkAllFilesInDir(dir string) ([]string, error) {
 	})
 
 	return fileList, err
+}
+
+// WalkFilesAsync is the concurrent version of WalkAllFilesInDir.
+func WalkFilesAsync(dirs []string) (chan walk.Result, chan error) {
+	opt := walk.Options{
+		OneFS:          true,
+		Type:           walk.FILE,
+		FollowSymlinks: true,
+	}
+
+	ch, errch := walk.Walk(dirs, &opt)
+	return ch, errch
+
 }
 
 func UserHomeDir() string {
