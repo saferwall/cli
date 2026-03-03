@@ -46,6 +46,7 @@ type scanModel struct {
 	token    string
 	parallel int
 	done     bool
+	isRescan bool // true when running in rescan mode (no upload, just rescan API + poll)
 }
 
 // --- Messages ---
@@ -130,6 +131,16 @@ func delayedPollCmd(index int, web webapi.Service, sha256 string) tea.Cmd {
 	})
 }
 
+func rescanFileCmd(index int, web webapi.Service, sha256, token string) tea.Cmd {
+	return func() tea.Msg {
+		err := web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
+		if err != nil {
+			return fileUploadedMsg{index: index, err: fmt.Errorf("rescan: %w", err)}
+		}
+		return fileUploadedMsg{index: index, sha256: sha256}
+	}
+}
+
 // --- Model interface ---
 
 func newScanModel(files []string, web webapi.Service, token string, parallel int) scanModel {
@@ -154,20 +165,51 @@ func newScanModel(files []string, web webapi.Service, token string, parallel int
 	}
 }
 
+func newRescanModel(sha256List []string, web webapi.Service, token string, parallel int) scanModel {
+	if parallel < 1 {
+		parallel = 1
+	}
+	rows := make([]fileRow, len(sha256List))
+	for i, sha := range sha256List {
+		s := spinner.New()
+		s.Spinner = spinner.Dot
+		rows[i] = fileRow{
+			filename: sha,
+			sha256:   sha,
+			state:    statePending,
+			spinner:  s,
+		}
+	}
+	return scanModel{
+		files:    rows,
+		web:      web,
+		token:    token,
+		parallel: parallel,
+		isRescan: true,
+	}
+}
+
 func (m scanModel) Init() tea.Cmd {
 	if len(m.files) == 0 {
 		return tea.Quit
 	}
 
-	// Launch up to m.parallel uploads concurrently.
+	// Launch up to m.parallel operations concurrently.
 	n := min(m.parallel, len(m.files))
 	var cmds []tea.Cmd
 	for i := range n {
 		m.files[i].state = stateUploading
-		cmds = append(cmds,
-			uploadFileCmd(i, m.web, m.files[i].filename, m.token),
-			m.files[i].spinner.Tick,
-		)
+		if m.isRescan {
+			cmds = append(cmds,
+				rescanFileCmd(i, m.web, m.files[i].sha256, m.token),
+				m.files[i].spinner.Tick,
+			)
+		} else {
+			cmds = append(cmds,
+				uploadFileCmd(i, m.web, m.files[i].filename, m.token),
+				m.files[i].spinner.Tick,
+			)
+		}
 	}
 	return tea.Batch(cmds...)
 }
@@ -260,10 +302,17 @@ func (m *scanModel) maybeQuitOrNext() tea.Cmd {
 		}
 		if m.files[i].state == statePending {
 			m.files[i].state = stateUploading
-			cmds = append(cmds,
-				uploadFileCmd(i, m.web, m.files[i].filename, m.token),
-				m.files[i].spinner.Tick,
-			)
+			if m.isRescan {
+				cmds = append(cmds,
+					rescanFileCmd(i, m.web, m.files[i].sha256, m.token),
+					m.files[i].spinner.Tick,
+				)
+			} else {
+				cmds = append(cmds,
+					uploadFileCmd(i, m.web, m.files[i].filename, m.token),
+					m.files[i].spinner.Tick,
+				)
+			}
 			inFlight++
 		}
 	}
@@ -292,11 +341,15 @@ func (m scanModel) View() string {
 			s += styleDim.Render("  "+name) + "\n"
 
 		case stateUploading:
-			s += f.spinner.View() + styleLabel.Render(" Uploading ") + name + " ...\n"
+			label := " Uploading  "
+			if m.isRescan {
+				label = " Rescanning "
+			}
+			s += f.spinner.View() + styleLabel.Render(label) + name + " ...\n"
 
 		case stateScanning:
 			sha := truncSha(f.sha256)
-			s += f.spinner.View() + styleLabel.Render(" Scanning  ") + name + " " + styleDim.Render(sha) + "\n"
+			s += f.spinner.View() + styleLabel.Render(" Scanning   ") + name + " " + styleDim.Render(sha) + "\n"
 
 		case stateDone:
 			sha := truncSha(f.sha256)
