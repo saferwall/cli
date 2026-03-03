@@ -34,7 +34,7 @@ Available Commands:
   init        Configure saferwall CLI credentials
   scan        Upload and scan files
   rescan      Rescan an existing file using its hash
-  download    Download a sample or a behavior report
+  download    Download a sample (and its artifacts)
   souk        Populate malware-souk database
   version     Version number
 ```
