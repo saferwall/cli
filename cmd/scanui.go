@@ -29,14 +29,17 @@ const (
 	stateError               // an error occurred
 )
 
+const maxPollRetries = 120 // 120 * 5s = 10 minutes
+
 // One row in the UI.
 type fileRow struct {
-	filename string
-	sha256   string
-	state    fileState
-	spinner  spinner.Model
-	result   *scanSummary
-	err      error
+	filename  string
+	sha256    string
+	state     fileState
+	spinner   spinner.Model
+	result    *scanSummary
+	err       error
+	pollCount int
 }
 
 // Top-level bubbletea model.
@@ -255,6 +258,12 @@ func (m scanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.status == statusCompleted {
 			cmds = append(cmds, fetchResultCmd(i, m.web, m.files[i].sha256))
 		} else {
+			m.files[i].pollCount++
+			if m.files[i].pollCount >= maxPollRetries {
+				m.files[i].state = stateError
+				m.files[i].err = fmt.Errorf("scan timed out after %d attempts", maxPollRetries)
+				return m, m.maybeQuitOrNext()
+			}
 			// Poll again after a delay.
 			cmds = append(cmds, delayedPollCmd(i, m.web, m.files[i].sha256))
 		}

@@ -15,7 +15,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-	"time"
 
 	"github.com/saferwall/cli/internal/entity"
 )
@@ -60,7 +59,7 @@ func (s Service) newfileUploadRequest(fieldname, filename string, params map[str
 func (s Service) FileExists(sha256 string) (bool, error) {
 
 	url := s.filesURL + sha256
-	resp, err := http.Head(url)
+	resp, err := s.client.Head(url)
 	if err != nil {
 		return false, err
 	}
@@ -85,9 +84,8 @@ func (s Service) ListFiles(authToken string, page int) (*Pages, error) {
 
 	request.Header.Set("Cookie", "JWTCookie="+authToken)
 
-	// Perform the http post request.
-	client := &http.Client{}
-	resp, err := client.Do(request)
+	// Perform the http request.
+	resp, err := s.client.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -135,9 +133,8 @@ func (s Service) Scan(filepath string, authToken, preferredOS string, enableDeto
 	// Add our auth token.
 	request.Header.Set("Cookie", "JWTCookie="+authToken)
 
-	// Perform the http post request.
-	client := &http.Client{}
-	resp, err := client.Do(request)
+	// Perform the http request.
+	resp, err := s.client.Do(request)
 	if err != nil {
 		return "", err
 	}
@@ -176,9 +173,8 @@ func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation 
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Cookie", "JWTCookie="+authToken)
 
-	// Perform the http post request.
-	client := &http.Client{}
-	resp, err := client.Do(request)
+	// Perform the http request.
+	resp, err := s.client.Do(request)
 	if err != nil {
 		return err
 	}
@@ -198,8 +194,6 @@ func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation 
 func (s Service) GetFile(sha256 string, file *entity.File) error {
 
 	url := s.filesURL + sha256
-	client := &http.Client{}
-	client.Timeout = time.Second * 10
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
@@ -207,7 +201,7 @@ func (s Service) GetFile(sha256 string, file *entity.File) error {
 	}
 
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	resp, err := client.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return err
 	}
@@ -224,9 +218,8 @@ func (s Service) GetFile(sha256 string, file *entity.File) error {
 // GetFileStatus retrieves only the status field of a file.
 func (s Service) GetFileStatus(sha256 string) (int, error) {
 	url := s.filesURL + sha256 + "?fields=status"
-	client := &http.Client{Timeout: 10 * time.Second}
 
-	resp, err := client.Get(url)
+	resp, err := s.client.Get(url)
 	if err != nil {
 		return 0, err
 	}
@@ -256,9 +249,8 @@ func (s Service) Download(sha256, authToken string) (*bytes.Buffer, error) {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Cookie", "JWTCookie="+authToken)
 
-	// Perform the http post request.
-	client := &http.Client{}
-	resp, err := client.Do(request)
+	// Perform the http request.
+	resp, err := s.client.Do(request)
 	if err != nil {
 		return nil, err
 	}
@@ -285,9 +277,8 @@ func (s Service) Delete(sha256, authToken string) error {
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("Cookie", "JWTCookie="+authToken)
 
-	// Perform the http post request.
-	client := &http.Client{}
-	resp, err := client.Do(request)
+	// Perform the http request.
+	resp, err := s.client.Do(request)
 	if err != nil {
 		return err
 	}

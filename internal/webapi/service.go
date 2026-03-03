@@ -4,21 +4,31 @@
 
 package webapi
 
+import (
+	"net/http"
+	"time"
+)
+
 const (
 	authEndpoint  = "/v1/auth/login/"
 	usersEndpoint = "/v1/users/"
 	filesEndpoint = "/v1/files/"
+
+	defaultTimeout = 60 * time.Second
 )
 
 type Service struct {
 	filesURL string
 	authURL  string
 	usersURL string
+	client   *http.Client
 }
 
 // New generates new web apis service object.
 func New(baseURL string) Service {
-	s := Service{}
+	s := Service{
+		client: &http.Client{Timeout: defaultTimeout},
+	}
 	s.authURL = baseURL + authEndpoint
 	s.usersURL = baseURL + usersEndpoint
 	s.filesURL = baseURL + filesEndpoint
