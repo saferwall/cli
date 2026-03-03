@@ -5,7 +5,7 @@
 package cmd
 
 import (
-	"log"
+	"fmt"
 	"path/filepath"
 
 	"github.com/saferwall/cli/internal/config"
@@ -35,6 +35,17 @@ For more details see the github repo at https://github.com/saferwall
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		// Skip config loading for the init command.
+		if cmd.Name() == "init" {
+			return nil
+		}
+		cfgFilePath := filepath.Join(util.UserHomeDir(), ".config", "saferwall")
+		if err := config.Load(cfgFilePath, "", &cfg); err != nil {
+			return fmt.Errorf("failed loading CLI config: %v\nRun 'saferwall-cli init' to configure", err)
+		}
+		return nil
+	},
 }
 
 // Execute executes the root command.
@@ -51,11 +62,5 @@ func init() {
 	rootCmd.AddCommand(listCmd)
 	rootCmd.AddCommand(deleteCmd)
 	rootCmd.AddCommand(uploadCmd)
-
-	// Load our configuration file.
-	cfgFilePath := filepath.Join(util.UserHomeDir(), ".config", "saferwall")
-	err := config.Load(cfgFilePath, "", &cfg)
-	if err != nil {
-		log.Fatalf("failed loading CLI config: %v", err)
-	}
+	rootCmd.AddCommand(initCmd)
 }
