@@ -57,8 +57,12 @@ saferwall-cli rescan <sha256>
 
 ### Download
 
-Download files by their SHA256 hash. You can also download a batch of samples from a text file.
+Download a sample by its SHA256 hash, or provide a text file with one hash per line to download in batch.
 
 ```sh
-saferwall-cli download --hash <sha256>
+# Single sample
+saferwall-cli download <sha256>
+
+# Batch from a text file
+saferwall-cli download hashes.txt
 ```
