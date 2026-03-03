@@ -6,6 +6,7 @@ package cmd
 
 import (
 	"log"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -15,16 +16,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	rescanFilePath string
-	fileHash       string
-)
+var sha256Re = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 
 func init() {
-	reScanCmd.Flags().StringVarP(&rescanFilePath, "path", "p", "",
-		"File name or path containing list of SHA256 to scan")
-	reScanCmd.Flags().StringVarP(&fileHash, "hash", "s", "",
-		"SHA256 of the file to rescan")
 	reScanCmd.Flags().IntVar(&parallelFlag, "parallel", 1,
 		"Number of files to rescan in parallel")
 	reScanCmd.Flags().BoolVarP(&enableDetonationFlag, "enableDetonation", "d", false,
@@ -58,9 +52,10 @@ func reScanFile(web webapi.Service, shaList []string, token string) error {
 }
 
 var reScanCmd = &cobra.Command{
-	Use:   "rescan",
-	Short: "Rescan an exiting file using its hash",
-	Long:  `Rescans the file`,
+	Use:   "rescan <sha256|file>",
+	Short: "Rescan an existing file using its hash",
+	Long:  `Rescans one or more files. Pass a SHA256 hash to rescan a single file, or a path to a text file with one hash per line to rescan in batch.`,
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 
 		// Login to saferwall web service
@@ -70,17 +65,22 @@ var reScanCmd = &cobra.Command{
 			log.Fatalf("failed to login to saferwall web service")
 		}
 
-		// Read the txt file containing the list of hashes to rescan.
-		var sha256List []string
-		if rescanFilePath != "" {
-			data, err := util.ReadAll(rescanFilePath)
-			if err != nil {
-				log.Fatalf("failed to read txt file")
-			}
+		arg := args[0]
 
-			sha256List = strings.Split(string(data), "\n")
+		var sha256List []string
+		if sha256Re.MatchString(arg) {
+			sha256List = append(sha256List, arg)
 		} else {
-			sha256List = append(sha256List, fileHash)
+			data, err := util.ReadAll(arg)
+			if err != nil {
+				log.Fatalf("failed to read file: %s", arg)
+			}
+			for _, line := range strings.Split(string(data), "\n") {
+				line = strings.TrimSpace(line)
+				if line != "" {
+					sha256List = append(sha256List, line)
+				}
+			}
 		}
 
 		reScanFile(webSvc, sha256List, token)
