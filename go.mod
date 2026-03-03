@@ -9,6 +9,7 @@ require (
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
+	github.com/yeka/zip v0.0.0-20231116150916-03d6312748a9
 	gopkg.in/yaml.v2 v2.4.0
 )
 

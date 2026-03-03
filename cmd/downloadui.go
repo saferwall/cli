@@ -6,23 +6,28 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/saferwall/cli/internal/util"
 	"github.com/saferwall/cli/internal/webapi"
+	yzip "github.com/yeka/zip"
 )
 
 // Per-file state in the download TUI.
 type dlState int
 
 const (
-	dlPending      dlState = iota
-	dlDownloading          // download in progress
-	dlDone                 // download finished successfully
-	dlError                // an error occurred
+	dlPending     dlState = iota
+	dlDownloading         // download in progress
+	dlDone                // download finished successfully
+	dlError               // an error occurred
 )
+
+// Zip password used to extract samples.
+const zipPassword = "infected"
 
 // One row in the download UI.
 type dlRow struct {
@@ -40,6 +45,7 @@ type downloadModel struct {
 	token    string
 	outDir   string
 	parallel int
+	extract  bool
 	done     bool
 }
 
@@ -53,26 +59,64 @@ type fileDownloadedMsg struct {
 
 // --- Commands (async I/O) ---
 
-func downloadFileCmd(index int, web webapi.Service, sha256, token, outDir string) tea.Cmd {
+func downloadFileCmd(index int, web webapi.Service, sha256, token, outDir string, extract bool) tea.Cmd {
 	return func() tea.Msg {
 		dataContent, err := web.Download(sha256, token)
 		if err != nil {
 			return fileDownloadedMsg{index: index, err: fmt.Errorf("download: %w", err)}
 		}
 
-		filename := sha256 + ".zip"
-		destPath := filepath.Join(outDir, filename)
-		if _, err := util.WriteBytesFile(destPath, dataContent); err != nil {
+		zipPath := filepath.Join(outDir, sha256+".zip")
+		if _, err := util.WriteBytesFile(zipPath, dataContent); err != nil {
 			return fileDownloadedMsg{index: index, err: fmt.Errorf("write file: %w", err)}
 		}
 
+		if !extract {
+			return fileDownloadedMsg{index: index, dest: zipPath}
+		}
+
+		destPath, err := extractZip(zipPath, outDir)
+		if err != nil {
+			return fileDownloadedMsg{index: index, err: fmt.Errorf("extract: %w", err)}
+		}
+
+		os.Remove(zipPath)
 		return fileDownloadedMsg{index: index, dest: destPath}
 	}
 }
 
+// extractZip opens a password-protected zip and extracts the first file.
+func extractZip(zipPath, outDir string) (string, error) {
+	r, err := yzip.OpenReader(zipPath)
+	if err != nil {
+		return "", err
+	}
+	defer r.Close()
+
+	if len(r.File) == 0 {
+		return "", fmt.Errorf("zip archive is empty")
+	}
+
+	f := r.File[0]
+	f.SetPassword(zipPassword)
+
+	rc, err := f.Open()
+	if err != nil {
+		return "", err
+	}
+	defer rc.Close()
+
+	destPath := filepath.Join(outDir, f.Name)
+	if _, err := util.WriteBytesFile(destPath, rc); err != nil {
+		return "", err
+	}
+
+	return destPath, nil
+}
+
 // --- Model interface ---
 
-func newDownloadModel(hashes []string, web webapi.Service, token, outDir string, parallel int) downloadModel {
+func newDownloadModel(hashes []string, web webapi.Service, token, outDir string, parallel int, extract bool) downloadModel {
 	if parallel < 1 {
 		parallel = 1
 	}
@@ -92,6 +136,7 @@ func newDownloadModel(hashes []string, web webapi.Service, token, outDir string,
 		token:    token,
 		outDir:   outDir,
 		parallel: parallel,
+		extract:  extract,
 	}
 }
 
@@ -105,7 +150,7 @@ func (m downloadModel) Init() tea.Cmd {
 	for i := range n {
 		m.files[i].state = dlDownloading
 		cmds = append(cmds,
-			downloadFileCmd(i, m.web, m.files[i].sha256, m.token, m.outDir),
+			downloadFileCmd(i, m.web, m.files[i].sha256, m.token, m.outDir, m.extract),
 			m.files[i].spinner.Tick,
 		)
 	}
@@ -172,7 +217,7 @@ func (m *downloadModel) maybeQuitOrNext() tea.Cmd {
 		if m.files[i].state == dlPending {
 			m.files[i].state = dlDownloading
 			cmds = append(cmds,
-				downloadFileCmd(i, m.web, m.files[i].sha256, m.token, m.outDir),
+				downloadFileCmd(i, m.web, m.files[i].sha256, m.token, m.outDir, m.extract),
 				m.files[i].spinner.Tick,
 			)
 			inFlight++

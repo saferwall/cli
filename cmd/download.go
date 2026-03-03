@@ -18,6 +18,7 @@ import (
 )
 
 var outputFlag string
+var extractFlag bool
 
 func init() {
 	ex, err := os.Executable()
@@ -29,6 +30,8 @@ func init() {
 		"Destination directory where to save samples. (default=current dir)")
 	downloadCmd.Flags().IntVarP(&parallelFlag, "parallel", "p", 4,
 		"Number of files to download in parallel")
+	downloadCmd.Flags().BoolVarP(&extractFlag, "extract", "x", false,
+		"Extract samples from zip (password: infected)")
 }
 
 var downloadCmd = &cobra.Command{
@@ -79,7 +82,7 @@ func collectHashes(arg string) []string {
 }
 
 func downloadFiles(web webapi.Service, token string, hashes []string) {
-	model := newDownloadModel(hashes, web, token, outputFlag, parallelFlag)
+	model := newDownloadModel(hashes, web, token, outputFlag, parallelFlag, extractFlag)
 	p := tea.NewProgram(model)
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "TUI error: %v\n", err)

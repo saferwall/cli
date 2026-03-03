@@ -65,4 +65,7 @@ saferwall-cli download <sha256>
 
 # Batch from a text file
 saferwall-cli download hashes.txt
+
+# Extract from zip (password: infected) instead of keeping the .zip
+saferwall-cli download -x <sha256>
 ```
