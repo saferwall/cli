@@ -55,12 +55,9 @@ func Execute() error {
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
+	rootCmd.AddCommand(initCmd)
 	rootCmd.AddCommand(scanCmd)
 	rootCmd.AddCommand(reScanCmd)
 	rootCmd.AddCommand(soukCmd)
 	rootCmd.AddCommand(downloadCmd)
-	rootCmd.AddCommand(listCmd)
-	rootCmd.AddCommand(deleteCmd)
-	rootCmd.AddCommand(uploadCmd)
-	rootCmd.AddCommand(initCmd)
 }
