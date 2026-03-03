@@ -10,7 +10,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"time"
 )
 
 // Pages represents a paginated list of data items.
@@ -32,10 +31,6 @@ func (s Service) Login(username, password string) (string, error) {
 		return "", err
 	}
 
-	timeout := time.Duration(5 * time.Second)
-	client := http.Client{
-		Timeout: timeout,
-	}
 	body := bytes.NewBuffer(requestBody)
 	request, err := http.NewRequest(http.MethodPost, s.authURL, body)
 	if err != nil {
@@ -43,7 +38,7 @@ func (s Service) Login(username, password string) (string, error) {
 	}
 
 	request.Header.Set("Content-Type", "application/json; charset=utf-8")
-	resp, err := client.Do(request)
+	resp, err := s.client.Do(request)
 	if err != nil {
 		return "", err
 	}
