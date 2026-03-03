@@ -5,12 +5,13 @@
 package cmd
 
 import (
-	"bytes"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/saferwall/cli/internal/util"
 	"github.com/saferwall/cli/internal/webapi"
 	"github.com/spf13/cobra"
@@ -26,6 +27,8 @@ func init() {
 
 	downloadCmd.Flags().StringVarP(&outputFlag, "output", "o", filepath.Dir(ex),
 		"Destination directory where to save samples. (default=current dir)")
+	downloadCmd.Flags().IntVarP(&parallelFlag, "parallel", "p", 4,
+		"Number of files to download in parallel")
 }
 
 var downloadCmd = &cobra.Command{
@@ -43,43 +46,43 @@ var downloadCmd = &cobra.Command{
 			log.Fatalf("failed to login to saferwall web service")
 		}
 
-		if sha256Re.MatchString(arg) {
-			// Single hash: download directly.
-			if err := download(arg, token, webSvc); err != nil {
-				log.Fatalf("failed to download sample (%s): %v", arg, err)
-			}
-		} else {
-			// Treat as a text file of hashes.
-			data, err := util.ReadAll(arg)
-			if err != nil {
-				log.Fatalf("failed to read SHA256 hashes from file: %s", arg)
-			}
-
-			for _, sha256 := range strings.Split(string(data), "\n") {
-				sha256 = strings.TrimSpace(sha256)
-				if sha256Re.MatchString(sha256) {
-					if err := download(sha256, token, webSvc); err != nil {
-						log.Fatalf("failed to download sample (%s): %v", sha256, err)
-					}
-				}
-			}
+		hashes := collectHashes(arg)
+		if len(hashes) == 0 {
+			log.Fatalf("no valid SHA256 hashes found in %q", arg)
 		}
+
+		downloadFiles(webSvc, token, hashes)
 	},
 }
 
-func download(sha256, token string, web webapi.Service) error {
-	var data bytes.Buffer
-
-	log.Printf("downloading %s to %s", sha256, outputFlag)
-	dataContent, err := web.Download(sha256, token)
-	if err != nil {
-		log.Fatalf("failed to download %s, err: %v", sha256, err)
-		return err
+// collectHashes returns a list of SHA256 hashes from the argument.
+// If arg is a SHA256 hash, it returns a single-element slice.
+// Otherwise it treats arg as a file path and reads hashes from it.
+func collectHashes(arg string) []string {
+	if sha256Re.MatchString(arg) {
+		return []string{arg}
 	}
-	data = *dataContent
 
-	filename := sha256 + ".zip"
-	destPath := filepath.Join(outputFlag, filename)
-	_, err = util.WriteBytesFile(destPath, &data)
-	return err
+	data, err := util.ReadAll(arg)
+	if err != nil {
+		log.Fatalf("failed to read SHA256 hashes from file: %s", arg)
+	}
+
+	var hashes []string
+	for _, line := range strings.Split(string(data), "\n") {
+		line = strings.TrimSpace(line)
+		if sha256Re.MatchString(line) {
+			hashes = append(hashes, line)
+		}
+	}
+	return hashes
+}
+
+func downloadFiles(web webapi.Service, token string, hashes []string) {
+	model := newDownloadModel(hashes, web, token, outputFlag, parallelFlag)
+	p := tea.NewProgram(model)
+	if _, err := p.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "TUI error: %v\n", err)
+		os.Exit(1)
+	}
 }
