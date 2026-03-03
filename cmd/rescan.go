@@ -5,12 +5,12 @@
 package cmd
 
 import (
+	"fmt"
 	"log"
 	"regexp"
 	"strings"
-	"sync"
-	"time"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/saferwall/cli/internal/util"
 	"github.com/saferwall/cli/internal/webapi"
 	"github.com/spf13/cobra"
@@ -29,25 +29,13 @@ func init() {
 		"Preferred OS for detonation, choice(win-7 | win-10)")
 }
 
-// reScanFile re-scans a list of SHA256.
+// reScanFile re-scans a list of SHA256 with a TUI progress display.
 func reScanFile(web webapi.Service, shaList []string, token string) error {
-	sem := make(chan struct{}, parallelFlag)
-	var wg sync.WaitGroup
-
-	for _, sha256 := range shaList {
-		sem <- struct{}{}
-		wg.Add(1)
-		go func() {
-			defer func() { <-sem; wg.Done() }()
-			log.Printf("rescanning %s", sha256)
-			err := web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
-			if err != nil {
-				log.Printf("failed to rescan file: %v", sha256)
-			}
-			time.Sleep(2 * time.Second)
-		}()
+	model := newRescanModel(shaList, web, token, parallelFlag)
+	p := tea.NewProgram(model)
+	if _, err := p.Run(); err != nil {
+		return fmt.Errorf("TUI error: %w", err)
 	}
-	wg.Wait()
 	return nil
 }
 
