@@ -341,25 +341,62 @@ var (
 	styleLabel   = lipgloss.NewStyle().Foreground(lipgloss.Color("12")) // blue
 )
 
+const maxVisibleCompleted = 10 // show only the last N completed/errored files
+
 func (m scanModel) View() string {
 	var s string
+
+	// Count states for the progress header.
+	var pending, inFlight, completed, errored int
+	for _, f := range m.files {
+		switch f.state {
+		case statePending:
+			pending++
+		case stateUploading, stateScanning:
+			inFlight++
+		case stateDone:
+			completed++
+		case stateError:
+			errored++
+		}
+	}
+	total := len(m.files)
+	finished := completed + errored
+
+	// Progress header.
+	s += styleLabel.Render(fmt.Sprintf("Progress: %d/%d", finished, total))
+	if pending > 0 {
+		s += styleDim.Render(fmt.Sprintf("  (%d pending)", pending))
+	}
+	if errored > 0 {
+		s += "  " + styleError.Render(fmt.Sprintf("%d failed", errored))
+	}
+	s += "\n\n"
+
+	// Show in-flight files (uploading/scanning) — these always get a spinner line.
 	for _, f := range m.files {
 		name := filepath.Base(f.filename)
 		switch f.state {
-		case statePending:
-			s += styleDim.Render("  "+name) + "\n"
-
 		case stateUploading:
 			label := " Uploading  "
 			if m.isRescan {
 				label = " Rescanning "
 			}
 			s += f.spinner.View() + styleLabel.Render(label) + name + " ...\n"
-
 		case stateScanning:
 			sha := truncSha(f.sha256)
 			s += f.spinner.View() + styleLabel.Render(" Scanning   ") + name + " " + styleDim.Render(sha) + "\n"
+		}
+	}
 
+	// Collect completed/errored rows, show only the last N.
+	type doneRow struct {
+		line string
+	}
+	var doneRows []doneRow
+	for _, f := range m.files {
+		name := filepath.Base(f.filename)
+		switch f.state {
 		case stateDone:
 			sha := truncSha(f.sha256)
 			line := styleSuccess.Render("✓") + " " + name + "  " + styleDim.Render(sha)
@@ -375,12 +412,22 @@ func (m scanModel) View() string {
 						f.result.MultiAV.Positives, f.result.MultiAV.EnginesCount)
 				}
 			}
-			s += line + "\n"
-
+			doneRows = append(doneRows, doneRow{line})
 		case stateError:
-			s += styleError.Render("✗") + " " + name + "  " + styleError.Render(f.err.Error()) + "\n"
+			line := styleError.Render("✗") + " " + name + "  " + styleError.Render(f.err.Error())
+			doneRows = append(doneRows, doneRow{line})
 		}
 	}
+
+	if len(doneRows) > maxVisibleCompleted && !m.done {
+		hidden := len(doneRows) - maxVisibleCompleted
+		s += styleDim.Render(fmt.Sprintf("  ... %d more completed above ...", hidden)) + "\n"
+		doneRows = doneRows[hidden:]
+	}
+	for _, r := range doneRows {
+		s += r.line + "\n"
+	}
+
 	return s
 }
 
