@@ -10,15 +10,30 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const (
-	version = "0.5.0"
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
 )
+
+// SetVersionInfo sets the build-time version information.
+func SetVersionInfo(v, c, d string) {
+	if v != "" {
+		version = v
+	}
+	if c != "" {
+		commit = c
+	}
+	if d != "" {
+		date = d
+	}
+}
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
 	Short: "Print the version number",
 	Long:  "Print the version number",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Printf("You are using version %s\n", version)
+		fmt.Printf("You are using version %s (commit: %s, built: %s)\n", version, commit, date)
 	},
 }
