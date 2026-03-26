@@ -34,6 +34,9 @@ type File struct {
 	BehaviorReportID string            `json:"behavior_report_id,omitempty"`
 	Status           int               `json:"status,omitempty"`
 	Classification   string            `json:"classification,omitempty"`
+	IsArchive        bool              `json:"is_archive,omitempty"`
+	ArchiveFiles     []string          `json:"archive_files,omitempty"`
+	ArchiveSHA256    string            `json:"archive_sha256,omitempty"`
 }
 
 // Submission represents a file submission.
