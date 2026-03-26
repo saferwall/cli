@@ -62,10 +62,12 @@ func printFileReport(file entity.File, webSvc webapi.Service) {
 	// File identification.
 	fmt.Println(headerStyle.Render("Identification"))
 	printKV("SHA256", file.SHA256)
-	printKV("MD5", file.MD5)
-	printKV("SHA1", file.SHA1)
-	if file.SSDeep != "" {
-		printKV("SSDeep", file.SSDeep)
+	if !file.IsArchive {
+		printKV("MD5", file.MD5)
+		printKV("SHA1", file.SHA1)
+		if file.SSDeep != "" {
+			printKV("SSDeep", file.SSDeep)
+		}
 	}
 	printKV("Size", formatSize(file.Size))
 	fmt.Println()
@@ -82,7 +84,7 @@ func printFileReport(file entity.File, webSvc webapi.Service) {
 		}
 		printKV("Format", fmtStr)
 	}
-	if len(file.Packer) > 0 {
+	if !file.IsArchive && len(file.Packer) > 0 {
 		printKV("Packer", strings.Join(file.Packer, ", "))
 	}
 	if file.IsArchive {
@@ -99,17 +101,19 @@ func printFileReport(file entity.File, webSvc webapi.Service) {
 	}
 	fmt.Println()
 
-	// Classification.
-	fmt.Println(headerStyle.Render("Classification"))
-	printKV("Verdict", renderClassification(file.Classification))
-	fmt.Println()
+	if file.IsArchive {
+		// Archives only scan their children, skip verdict and AV results.
+		if len(file.ArchiveFiles) > 0 {
+			printArchiveChildren(file.ArchiveFiles, webSvc)
+		}
+	} else {
+		// Classification.
+		fmt.Println(headerStyle.Render("Classification"))
+		printKV("Verdict", renderClassification(file.Classification))
+		fmt.Println()
 
-	// MultiAV results.
-	printMultiAVResults(file.MultiAV)
-
-	// Archive children.
-	if file.IsArchive && len(file.ArchiveFiles) > 0 {
-		printArchiveChildren(file.ArchiveFiles, webSvc)
+		// MultiAV results.
+		printMultiAVResults(file.MultiAV)
 	}
 }
 
@@ -154,24 +158,23 @@ func printArchiveChildren(archiveFiles []string, webSvc webapi.Service) {
 	fmt.Println()
 
 	// Table header.
-	shaCol := lipgloss.NewStyle().Width(14)
 	fmtCol := lipgloss.NewStyle().Width(16)
 	avCol := lipgloss.NewStyle().Width(14)
 	clsCol := lipgloss.NewStyle().Width(12)
 
-	fmt.Printf("  %s %s %s %s\n",
-		styleDim.Render(shaCol.Render("SHA256")),
+	fmt.Printf("  %s  %s %s %s\n",
+		styleDim.Render(fmt.Sprintf("%-64s", "SHA256")),
 		styleDim.Render(fmtCol.Render("FORMAT")),
 		styleDim.Render(avCol.Render("DETECTIONS")),
 		styleDim.Render(clsCol.Render("VERDICT")),
 	)
-	fmt.Printf("  %s\n", styleDim.Render(strings.Repeat("─", 56)))
+	fmt.Printf("  %s\n", styleDim.Render(strings.Repeat("─", 108)))
 
 	for _, sha := range archiveFiles {
 		cs := fetchChildSummary(sha, webSvc)
 		if cs.err != nil {
-			fmt.Printf("  %s %s\n",
-				shaCol.Render(truncSha(sha)),
+			fmt.Printf("  %s  %s\n",
+				sha,
 				styleError.Render("error: "+cs.err.Error()),
 			)
 			continue
@@ -184,8 +187,8 @@ func printArchiveChildren(archiveFiles []string, webSvc webapi.Service) {
 			detStr = cleanStyle.Render(detStr)
 		}
 
-		fmt.Printf("  %s %s %s %s\n",
-			shaCol.Render(truncSha(cs.sha256)),
+		fmt.Printf("  %s  %s %s %s\n",
+			cs.sha256,
 			fmtCol.Render(cs.format),
 			avCol.Render(detStr),
 			clsCol.Render(renderClassification(cs.classification)),
