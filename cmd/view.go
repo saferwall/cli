@@ -26,18 +26,17 @@ var viewCmd = &cobra.Command{
 		sha256 := strings.ToLower(args[0])
 
 		webSvc := webapi.New(cfg.Credentials.URL)
-		token, err := webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
+		_, err := webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 		if err != nil {
 			log.Fatalf("failed to login: %v", err)
 		}
-		_ = token
 
 		var file entity.File
 		if err := webSvc.GetFile(sha256, &file); err != nil {
 			log.Fatalf("failed to get file: %v", err)
 		}
 
-		printFileReport(file)
+		printFileReport(file, webSvc)
 	},
 }
 
@@ -55,7 +54,7 @@ var (
 	avNameStyle  = lipgloss.NewStyle().Width(24)
 )
 
-func printFileReport(file entity.File) {
+func printFileReport(file entity.File, webSvc webapi.Service) {
 	fmt.Println()
 	fmt.Println(titleStyle.Render("File Report"))
 	fmt.Println(strings.Repeat("─", 60))
@@ -86,6 +85,12 @@ func printFileReport(file entity.File) {
 	if len(file.Packer) > 0 {
 		printKV("Packer", strings.Join(file.Packer, ", "))
 	}
+	if file.IsArchive {
+		printKV("Archive", fmt.Sprintf("yes (%d files)", len(file.ArchiveFiles)))
+	}
+	if file.ArchiveSHA256 != "" {
+		printKV("Parent", file.ArchiveSHA256)
+	}
 	if file.FirstSeen != 0 {
 		printKV("First Seen", formatTimestamp(file.FirstSeen))
 	}
@@ -101,6 +106,92 @@ func printFileReport(file entity.File) {
 
 	// MultiAV results.
 	printMultiAVResults(file.MultiAV)
+
+	// Archive children.
+	if file.IsArchive && len(file.ArchiveFiles) > 0 {
+		printArchiveChildren(file.ArchiveFiles, webSvc)
+	}
+}
+
+// childSummary holds the minimal info we display per archive child.
+type childSummary struct {
+	sha256         string
+	classification string
+	format         string
+	positives      int
+	enginesCount   int
+	err            error
+}
+
+func fetchChildSummary(sha256 string, webSvc webapi.Service) childSummary {
+	var file entity.File
+	if err := webSvc.GetFile(sha256, &file); err != nil {
+		return childSummary{sha256: sha256, err: err}
+	}
+	cs := childSummary{
+		sha256:         sha256,
+		classification: file.Classification,
+		format:         file.Format,
+	}
+	if file.Extension != "" {
+		cs.format += "/" + file.Extension
+	}
+	if lastScan, ok := file.MultiAV["last_scan"].(map[string]any); ok {
+		if stats, ok := lastScan["stats"].(map[string]any); ok {
+			if v, ok := stats["positives"].(float64); ok {
+				cs.positives = int(v)
+			}
+			if v, ok := stats["engines_count"].(float64); ok {
+				cs.enginesCount = int(v)
+			}
+		}
+	}
+	return cs
+}
+
+func printArchiveChildren(archiveFiles []string, webSvc webapi.Service) {
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Archive Contents (%d files)", len(archiveFiles))))
+	fmt.Println()
+
+	// Table header.
+	shaCol := lipgloss.NewStyle().Width(14)
+	fmtCol := lipgloss.NewStyle().Width(16)
+	avCol := lipgloss.NewStyle().Width(14)
+	clsCol := lipgloss.NewStyle().Width(12)
+
+	fmt.Printf("  %s %s %s %s\n",
+		styleDim.Render(shaCol.Render("SHA256")),
+		styleDim.Render(fmtCol.Render("FORMAT")),
+		styleDim.Render(avCol.Render("DETECTIONS")),
+		styleDim.Render(clsCol.Render("VERDICT")),
+	)
+	fmt.Printf("  %s\n", styleDim.Render(strings.Repeat("─", 56)))
+
+	for _, sha := range archiveFiles {
+		cs := fetchChildSummary(sha, webSvc)
+		if cs.err != nil {
+			fmt.Printf("  %s %s\n",
+				shaCol.Render(truncSha(sha)),
+				styleError.Render("error: "+cs.err.Error()),
+			)
+			continue
+		}
+
+		detStr := fmt.Sprintf("%d/%d", cs.positives, cs.enginesCount)
+		if cs.positives > 0 {
+			detStr = detectStyle.Render(detStr)
+		} else {
+			detStr = cleanStyle.Render(detStr)
+		}
+
+		fmt.Printf("  %s %s %s %s\n",
+			shaCol.Render(truncSha(cs.sha256)),
+			fmtCol.Render(cs.format),
+			avCol.Render(detStr),
+			clsCol.Render(renderClassification(cs.classification)),
+		)
+	}
+	fmt.Println()
 }
 
 func printMultiAVResults(multiav map[string]any) {
