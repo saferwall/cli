@@ -34,6 +34,7 @@ Available Commands:
   init        Configure saferwall CLI credentials
   scan        Upload and scan files
   rescan      Rescan an existing file using its hash
+  view        View scan results for a file by its SHA256 hash
   download    Download a sample (and its artifacts)
   souk        Populate malware-souk database
   version     Version number
@@ -44,8 +45,29 @@ Available Commands:
 Upload and scan files. Supports scanning a single file or an entire directory.
 
 ```sh
-saferwall-cli scan -p /path/to/sample
+# Scan a single file
+saferwall-cli scan /path/to/sample
+
+# Scan an entire directory
+saferwall-cli scan /path/to/directory
+
+# Scan with parallel uploads
+saferwall-cli scan -p 4 /path/to/directory
+
+# Force rescan if the file already exists
+saferwall-cli scan -f /path/to/sample
+
+# Enable detonation with custom timeout and OS
+saferwall-cli scan -d -t 30 -o win-7 /path/to/sample
 ```
+
+| Flag | Short | Default | Description |
+|------|-------|---------|-------------|
+| `--force` | `-f` | `false` | Force rescan if the file already exists |
+| `--parallel` | `-p` | `1` | Number of files to scan in parallel |
+| `--enableDetonation` | `-d` | `false` | Enable detonation (dynamic analysis) |
+| `--timeout` | `-t` | `15` | Detonation duration in seconds |
+| `--os` | `-o` | `win-10` | Preferred OS for detonation (`win-7` or `win-10`) |
 
 ### Rescan
 
@@ -53,6 +75,14 @@ Rescan an existing file by its SHA256 hash, or rescan a batch of hashes from a t
 
 ```sh
 saferwall-cli rescan <sha256>
+```
+
+### View
+
+View scan results for a file by its SHA256 hash. Displays file identification (hashes, size), properties (format, packer, timestamps), classification verdict, and antivirus detection results. For archive files, it shows a summary table of all contained files.
+
+```sh
+saferwall-cli view <sha256>
 ```
 
 ### Download
