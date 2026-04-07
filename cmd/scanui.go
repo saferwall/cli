@@ -88,10 +88,14 @@ func uploadFileCmd(index int, web webapi.Service, filename, token string) tea.Cm
 		}
 
 		if !exists {
-			_, err = web.Scan(filename, token, osFlag, enableDetonationFlag, timeoutFlag)
+			file, err := web.Scan(filename, token, osFlag, enableDetonationFlag, timeoutFlag)
 			if err != nil {
 				return fileUploadedMsg{index: index, err: fmt.Errorf("upload: %w", err)}
 			}
+			// Use the SHA256 from the server response. For single-file ZIPs,
+			// the server extracts the file and returns the child's hash, not
+			// the ZIP's hash.
+			return fileUploadedMsg{index: index, sha256: file.SHA256}
 		} else if forceRescanFlag {
 			err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
 			if err != nil {
