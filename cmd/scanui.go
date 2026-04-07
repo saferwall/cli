@@ -33,13 +33,16 @@ const maxPollRetries = 120 // 120 * 5s = 10 minutes
 
 // One row in the UI.
 type fileRow struct {
-	filename  string
-	sha256    string
-	state     fileState
-	spinner   spinner.Model
-	result    *scanSummary
-	err       error
-	pollCount int
+	filename   string
+	sha256     string
+	size       int64 // file size in bytes (set from upload response for archives)
+	state      fileState
+	spinner    spinner.Model
+	result     *scanSummary
+	err        error
+	pollCount  int
+	isArchive  bool // true for ZIP containers with multiple files
+	childCount int  // number of extracted files
 }
 
 // Top-level bubbletea model.
@@ -55,9 +58,12 @@ type scanModel struct {
 // --- Messages ---
 
 type fileUploadedMsg struct {
-	index  int
-	sha256 string
-	err    error
+	index       int
+	sha256      string
+	size        int64
+	err         error
+	isArchive   bool
+	childHashes []string
 }
 
 type fileScanStatusMsg struct {
@@ -94,9 +100,38 @@ func uploadFileCmd(index int, web webapi.Service, filename, token string) tea.Cm
 			}
 			// Use the SHA256 from the server response. For single-file ZIPs,
 			// the server extracts the file and returns the child's hash, not
-			// the ZIP's hash.
-			return fileUploadedMsg{index: index, sha256: file.SHA256}
+			// the ZIP's hash. For multi-file ZIPs, the server returns the
+			// archive doc with child hashes so we can track them individually.
+			return fileUploadedMsg{
+				index:       index,
+				sha256:      file.SHA256,
+				size:        file.Size,
+				isArchive:   file.IsArchive,
+				childHashes: file.ArchiveFiles,
+			}
 		} else if forceRescanFlag {
+			// Fetch the existing file to check if it's an archive.
+			var file entity.File
+			if err := web.GetFile(sha256, &file); err != nil {
+				return fileUploadedMsg{index: index, err: fmt.Errorf("get file: %w", err)}
+			}
+
+			if file.IsArchive && len(file.ArchiveFiles) > 0 {
+				// Archive: rescan each child, not the container itself.
+				for _, childHash := range file.ArchiveFiles {
+					if err := web.Rescan(childHash, token, osFlag, enableDetonationFlag, timeoutFlag); err != nil {
+						return fileUploadedMsg{index: index, err: fmt.Errorf("rescan child %s: %w", childHash[:12], err)}
+					}
+				}
+				return fileUploadedMsg{
+					index:       index,
+					sha256:      sha256,
+					size:        file.Size,
+					isArchive:   true,
+					childHashes: file.ArchiveFiles,
+				}
+			}
+
 			err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
 			if err != nil {
 				return fileUploadedMsg{index: index, err: fmt.Errorf("rescan: %w", err)}
@@ -140,6 +175,27 @@ func delayedPollCmd(index int, web webapi.Service, sha256 string) tea.Cmd {
 
 func rescanFileCmd(index int, web webapi.Service, sha256, token string) tea.Cmd {
 	return func() tea.Msg {
+		// Check if the hash is an archive container.
+		var file entity.File
+		if err := web.GetFile(sha256, &file); err != nil {
+			return fileUploadedMsg{index: index, err: fmt.Errorf("get file: %w", err)}
+		}
+
+		if file.IsArchive && len(file.ArchiveFiles) > 0 {
+			for _, childHash := range file.ArchiveFiles {
+				if err := web.Rescan(childHash, token, osFlag, enableDetonationFlag, timeoutFlag); err != nil {
+					return fileUploadedMsg{index: index, err: fmt.Errorf("rescan child %s: %w", childHash[:12], err)}
+				}
+			}
+			return fileUploadedMsg{
+				index:       index,
+				sha256:      sha256,
+				size:        file.Size,
+				isArchive:   true,
+				childHashes: file.ArchiveFiles,
+			}
+		}
+
 		err := web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
 		if err != nil {
 			return fileUploadedMsg{index: index, err: fmt.Errorf("rescan: %w", err)}
@@ -249,8 +305,34 @@ func (m scanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.maybeQuitOrNext()
 		}
 		m.files[i].sha256 = msg.sha256
-		m.files[i].state = stateScanning
-		cmds = append(cmds, pollStatusCmd(i, m.web, msg.sha256))
+
+		if msg.isArchive && len(msg.childHashes) > 0 {
+			// Archive container: mark it as done immediately and track children.
+			m.files[i].state = stateDone
+			m.files[i].isArchive = true
+			m.files[i].childCount = len(msg.childHashes)
+			m.files[i].size = msg.size
+
+			archiveName := filepath.Base(m.files[i].filename)
+			for _, childHash := range msg.childHashes {
+				s := spinner.New()
+				s.Spinner = spinner.Dot
+				m.files = append(m.files, fileRow{
+					filename: archiveName + "/" + truncSha(childHash),
+					sha256:   childHash,
+					state:    stateScanning,
+					spinner:  s,
+				})
+				childIdx := len(m.files) - 1
+				cmds = append(cmds,
+					pollStatusCmd(childIdx, m.web, childHash),
+					m.files[childIdx].spinner.Tick,
+				)
+			}
+		} else {
+			m.files[i].state = stateScanning
+			cmds = append(cmds, pollStatusCmd(i, m.web, msg.sha256))
+		}
 
 	case fileScanStatusMsg:
 		i := msg.index
@@ -404,7 +486,11 @@ func (m scanModel) View() string {
 		case stateDone:
 			sha := truncSha(f.sha256)
 			line := styleSuccess.Render("✓") + " " + name + "  " + styleDim.Render(sha)
-			if f.result != nil {
+			if f.isArchive {
+				line += "  " + styleDim.Render(formatSize(f.size))
+				line += "  " + styleLabel.Render(fmt.Sprintf("archive (%d files)", f.childCount))
+			} else if f.result != nil {
+				line += "  " + styleDim.Render(formatSize(f.result.Size))
 				fmtStr := f.result.FileFormat
 				if f.result.FileExtension != "" {
 					fmtStr += "/" + f.result.FileExtension
@@ -454,3 +540,4 @@ func truncSha(sha string) string {
 	}
 	return sha
 }
+

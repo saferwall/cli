@@ -47,6 +47,7 @@ func init() {
 
 type scanSummary struct {
 	SHA256         string     `json:"sha256"`
+	Size           int64      `json:"size"`
 	Classification string     `json:"classification"`
 	FileFormat     string     `json:"file_format"`
 	FileExtension  string     `json:"file_extension"`
@@ -61,6 +62,7 @@ type avSummary struct {
 func buildScanSummary(file entity.File) scanSummary {
 	s := scanSummary{
 		SHA256:         file.SHA256,
+		Size:           file.Size,
 		Classification: file.Classification,
 		FileFormat:     file.Format,
 		FileExtension:  file.Extension,
