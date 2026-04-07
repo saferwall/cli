@@ -110,6 +110,28 @@ func uploadFileCmd(index int, web webapi.Service, filename, token string) tea.Cm
 				childHashes: file.ArchiveFiles,
 			}
 		} else if forceRescanFlag {
+			// Fetch the existing file to check if it's an archive.
+			var file entity.File
+			if err := web.GetFile(sha256, &file); err != nil {
+				return fileUploadedMsg{index: index, err: fmt.Errorf("get file: %w", err)}
+			}
+
+			if file.IsArchive && len(file.ArchiveFiles) > 0 {
+				// Archive: rescan each child, not the container itself.
+				for _, childHash := range file.ArchiveFiles {
+					if err := web.Rescan(childHash, token, osFlag, enableDetonationFlag, timeoutFlag); err != nil {
+						return fileUploadedMsg{index: index, err: fmt.Errorf("rescan child %s: %w", childHash[:12], err)}
+					}
+				}
+				return fileUploadedMsg{
+					index:       index,
+					sha256:      sha256,
+					size:        file.Size,
+					isArchive:   true,
+					childHashes: file.ArchiveFiles,
+				}
+			}
+
 			err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
 			if err != nil {
 				return fileUploadedMsg{index: index, err: fmt.Errorf("rescan: %w", err)}
@@ -153,6 +175,27 @@ func delayedPollCmd(index int, web webapi.Service, sha256 string) tea.Cmd {
 
 func rescanFileCmd(index int, web webapi.Service, sha256, token string) tea.Cmd {
 	return func() tea.Msg {
+		// Check if the hash is an archive container.
+		var file entity.File
+		if err := web.GetFile(sha256, &file); err != nil {
+			return fileUploadedMsg{index: index, err: fmt.Errorf("get file: %w", err)}
+		}
+
+		if file.IsArchive && len(file.ArchiveFiles) > 0 {
+			for _, childHash := range file.ArchiveFiles {
+				if err := web.Rescan(childHash, token, osFlag, enableDetonationFlag, timeoutFlag); err != nil {
+					return fileUploadedMsg{index: index, err: fmt.Errorf("rescan child %s: %w", childHash[:12], err)}
+				}
+			}
+			return fileUploadedMsg{
+				index:       index,
+				sha256:      sha256,
+				size:        file.Size,
+				isArchive:   true,
+				childHashes: file.ArchiveFiles,
+			}
+		}
+
 		err := web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
 		if err != nil {
 			return fileUploadedMsg{index: index, err: fmt.Errorf("rescan: %w", err)}
