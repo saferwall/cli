@@ -50,7 +50,7 @@ var reScanCmd = &cobra.Command{
 		webSvc := webapi.New(cfg.Credentials.URL)
 		token, err := webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 		if err != nil {
-			log.Fatalf("failed to login to saferwall web service")
+			log.Fatalf("failed to authenticate: %v", err)
 		}
 
 		arg := args[0]

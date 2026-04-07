@@ -28,7 +28,7 @@ var viewCmd = &cobra.Command{
 		webSvc := webapi.New(cfg.Credentials.URL)
 		_, err := webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
 		if err != nil {
-			log.Fatalf("failed to login: %v", err)
+			log.Fatalf("failed to authenticate: %v", err)
 		}
 
 		var file entity.File
@@ -46,12 +46,12 @@ func init() {
 
 // Styles for the report output.
 var (
-	titleStyle   = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))
-	headerStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("14"))
-	keyStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	detectStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	cleanStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
-	avNameStyle  = lipgloss.NewStyle().Width(24)
+	titleStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))
+	headerStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("14"))
+	keyStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+	detectStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
+	cleanStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
+	avNameStyle = lipgloss.NewStyle().Width(24)
 )
 
 func printFileReport(file entity.File, webSvc webapi.Service) {
