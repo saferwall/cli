@@ -117,7 +117,7 @@ func (s Service) ListFiles(authToken string, page int) (*Pages, error) {
 
 }
 
-func (s Service) Scan(filepath string, authToken, preferredOS string, enableDetonation bool, timeout int) (string, error) {
+func (s Service) Scan(filepath string, authToken, preferredOS string, enableDetonation bool, timeout int) (*entity.File, error) {
 	params := map[string]string{
 		"skip_detonation": strconv.FormatBool(!enableDetonation),
 		"os":              preferredOS,
@@ -127,7 +127,7 @@ func (s Service) Scan(filepath string, authToken, preferredOS string, enableDeto
 	// Create a new file upload request.
 	request, err := s.newfileUploadRequest("file", filepath, params)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	// Add our auth token.
@@ -136,17 +136,24 @@ func (s Service) Scan(filepath string, authToken, preferredOS string, enableDeto
 	// Perform the http request.
 	resp, err := s.client.Do(request)
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
 	}
 
-	// Read the response.
-	body := &bytes.Buffer{}
-	_, err = body.ReadFrom(resp.Body)
-	if err != nil {
-		return "", err
+	if resp.StatusCode != http.StatusCreated {
+		return nil, fmt.Errorf("upload failed: HTTP %d: %s", resp.StatusCode, body)
 	}
-	resp.Body.Close()
-	return body.String(), nil
+
+	var file entity.File
+	if err := json.Unmarshal(body, &file); err != nil {
+		return nil, fmt.Errorf("failed to parse upload response: %w", err)
+	}
+	return &file, nil
 }
 
 func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation bool, timeout int) error {
