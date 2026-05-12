@@ -107,7 +107,7 @@ func uploadFileCmd(index int, web webapi.Service, filename, token string) tea.Cm
 				sha256:      file.SHA256,
 				size:        file.Size,
 				isArchive:   file.IsArchive,
-				childHashes: file.ArchiveFiles,
+				childHashes: derivedHashes(file.DerivedFiles),
 			}
 		} else if forceRescanFlag {
 			// Fetch the existing file to check if it's an archive.
@@ -116,11 +116,11 @@ func uploadFileCmd(index int, web webapi.Service, filename, token string) tea.Cm
 				return fileUploadedMsg{index: index, err: fmt.Errorf("get file: %w", err)}
 			}
 
-			if file.IsArchive && len(file.ArchiveFiles) > 0 {
+			if file.IsArchive && len(file.DerivedFiles) > 0 {
 				// Archive: rescan each child, not the container itself.
-				for _, childHash := range file.ArchiveFiles {
-					if err := web.Rescan(childHash, token, osFlag, enableDetonationFlag, timeoutFlag); err != nil {
-						return fileUploadedMsg{index: index, err: fmt.Errorf("rescan child %s: %w", childHash[:12], err)}
+				for _, df := range file.DerivedFiles {
+					if err := web.Rescan(df.SHA256, token, osFlag, enableDetonationFlag, timeoutFlag); err != nil {
+						return fileUploadedMsg{index: index, err: fmt.Errorf("rescan child %s: %w", df.SHA256[:12], err)}
 					}
 				}
 				return fileUploadedMsg{
@@ -128,7 +128,7 @@ func uploadFileCmd(index int, web webapi.Service, filename, token string) tea.Cm
 					sha256:      sha256,
 					size:        file.Size,
 					isArchive:   true,
-					childHashes: file.ArchiveFiles,
+					childHashes: derivedHashes(file.DerivedFiles),
 				}
 			}
 
@@ -181,10 +181,10 @@ func rescanFileCmd(index int, web webapi.Service, sha256, token string) tea.Cmd 
 			return fileUploadedMsg{index: index, err: fmt.Errorf("get file: %w", err)}
 		}
 
-		if file.IsArchive && len(file.ArchiveFiles) > 0 {
-			for _, childHash := range file.ArchiveFiles {
-				if err := web.Rescan(childHash, token, osFlag, enableDetonationFlag, timeoutFlag); err != nil {
-					return fileUploadedMsg{index: index, err: fmt.Errorf("rescan child %s: %w", childHash[:12], err)}
+		if file.IsArchive && len(file.DerivedFiles) > 0 {
+			for _, df := range file.DerivedFiles {
+				if err := web.Rescan(df.SHA256, token, osFlag, enableDetonationFlag, timeoutFlag); err != nil {
+					return fileUploadedMsg{index: index, err: fmt.Errorf("rescan child %s: %w", df.SHA256[:12], err)}
 				}
 			}
 			return fileUploadedMsg{
@@ -192,7 +192,7 @@ func rescanFileCmd(index int, web webapi.Service, sha256, token string) tea.Cmd 
 				sha256:      sha256,
 				size:        file.Size,
 				isArchive:   true,
-				childHashes: file.ArchiveFiles,
+				childHashes: derivedHashes(file.DerivedFiles),
 			}
 		}
 
@@ -539,5 +539,13 @@ func truncSha(sha string) string {
 		return sha[:12]
 	}
 	return sha
+}
+
+func derivedHashes(files []entity.DerivedFile) []string {
+	hashes := make([]string, len(files))
+	for i, f := range files {
+		hashes[i] = f.SHA256
+	}
+	return hashes
 }
 
