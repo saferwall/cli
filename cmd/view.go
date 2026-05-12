@@ -90,6 +90,22 @@ func printFileReport(file entity.File, webSvc webapi.Service) {
 	if file.IsArchive {
 		printKV("Archive", fmt.Sprintf("yes (%d files)", len(file.DerivedFiles)))
 	}
+	if file.Encrypted {
+		printKV("Encrypted", "yes")
+		if file.DecryptionSuccess != nil {
+			if *file.DecryptionSuccess {
+				printKV("Decryption", cleanStyle.Render("successful"))
+				if file.SuccessfulPassword != "" {
+					printKV("Password", file.SuccessfulPassword)
+				}
+			} else {
+				printKV("Decryption", detectStyle.Render("failed"))
+				if len(file.AttemptedPasswords) > 0 {
+					printKV("Attempted", strings.Join(file.AttemptedPasswords, ", "))
+				}
+			}
+		}
+	}
 	if file.ParentSHA256 != "" {
 		printKV("Parent", file.ParentSHA256)
 	}
