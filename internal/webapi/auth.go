@@ -4,14 +4,6 @@
 
 package webapi
 
-import (
-	"bytes"
-	"encoding/json"
-	"errors"
-	"io"
-	"net/http"
-)
-
 // Pages represents a paginated list of data items.
 type Pages struct {
 	Page       int `json:"page"`
@@ -19,45 +11,4 @@ type Pages struct {
 	PageCount  int `json:"page_count"`
 	TotalCount int `json:"total_count"`
 	Items      any `json:"items"`
-}
-
-func (s Service) Login(username, password string) (string, error) {
-
-	requestBody, err := json.Marshal(map[string]string{
-		"username": username,
-		"password": password,
-	})
-	if err != nil {
-		return "", err
-	}
-
-	body := bytes.NewBuffer(requestBody)
-	request, err := http.NewRequest(http.MethodPost, s.authURL, body)
-	if err != nil {
-		return "", err
-	}
-
-	request.Header.Set("Content-Type", "application/json; charset=utf-8")
-	resp, err := s.client.Do(request)
-	if err != nil {
-		return "", err
-	}
-
-	defer resp.Body.Close()
-	d, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", err
-	}
-
-	var res map[string]string
-	err = json.Unmarshal(d, &res)
-	if err != nil {
-		return "", err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return "", errors.New("failed login")
-	}
-
-	return res["token"], nil
 }

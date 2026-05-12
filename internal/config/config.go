@@ -10,9 +10,8 @@ import (
 
 // CredentialsCfg represents saferwall credentials.
 type CredentialsCfg struct {
-	URL      string `mapstructure:"url"`
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
+	URL    string `mapstructure:"url"`
+	APIKey string `mapstructure:"api_key"`
 }
 
 // AWSS3Cfg represents AWS S3 credentials.

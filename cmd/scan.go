@@ -125,13 +125,7 @@ var scanCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 
-		// login to saferwall web service
 		webSvc := webapi.New(cfg.Credentials.URL)
-		token, err := webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
-		if err != nil {
-			log.Fatalf("failed to authenticate: %v", err)
-		}
-
-		scanFile(webSvc, args[0], token)
+		scanFile(webSvc, args[0], cfg.Credentials.APIKey)
 	},
 }

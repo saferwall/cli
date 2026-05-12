@@ -14,8 +14,7 @@ import (
 
 const (
 	fieldURL = iota
-	fieldUsername
-	fieldPassword
+	fieldAPIKey
 	fieldCount
 )
 
@@ -35,16 +34,10 @@ func newInitModel() initModel {
 	url.Prompt = "  "
 	inputs[fieldURL] = url
 
-	username := textinput.New()
-	username.Placeholder = "your username"
-	username.Prompt = "  "
-	inputs[fieldUsername] = username
-
-	password := textinput.New()
-	password.Placeholder = "your password"
-	password.EchoMode = textinput.EchoPassword
-	password.Prompt = "  "
-	inputs[fieldPassword] = password
+	apiKey := textinput.New()
+	apiKey.Placeholder = "your api key"
+	apiKey.Prompt = "  "
+	inputs[fieldAPIKey] = apiKey
 
 	return initModel{inputs: inputs}
 }
@@ -66,7 +59,7 @@ func (m initModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.focused = (m.focused - 1 + fieldCount) % fieldCount
 			return m, m.updateFocus()
 		case "enter":
-			if m.focused == fieldPassword {
+			if m.focused == fieldAPIKey {
 				m.submitted = true
 				return m, tea.Quit
 			}
@@ -102,7 +95,7 @@ func (m initModel) View() string {
 	b.WriteString("\n")
 	b.WriteString(styleLabel.Render("  Configure Saferwall CLI") + "\n\n")
 
-	labels := []string{"URL", "Username", "Password"}
+	labels := []string{"URL", "API Key"}
 	for i, label := range labels {
 		if i == m.focused {
 			b.WriteString(styleSuccess.Render("  > "))
@@ -120,8 +113,7 @@ func (m initModel) View() string {
 	return b.String()
 }
 
-func (m initModel) values() (url, username, password string) {
+func (m initModel) values() (url, apiKey string) {
 	return m.inputs[fieldURL].Value(),
-		m.inputs[fieldUsername].Value(),
-		m.inputs[fieldPassword].Value()
+		m.inputs[fieldAPIKey].Value()
 }

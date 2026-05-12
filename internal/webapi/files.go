@@ -82,7 +82,7 @@ func (s Service) ListFiles(authToken string, page int) (*Pages, error) {
 		return nil, err
 	}
 
-	request.Header.Set("Cookie", "JWTCookie="+authToken)
+	request.Header.Set("X-Api-Key", authToken)
 
 	// Perform the http request.
 	resp, err := s.client.Do(request)
@@ -131,7 +131,7 @@ func (s Service) Scan(filepath string, authToken, preferredOS string, enableDeto
 	}
 
 	// Add our auth token.
-	request.Header.Set("Cookie", "JWTCookie="+authToken)
+	request.Header.Set("X-Api-Key", authToken)
 
 	// Perform the http request.
 	resp, err := s.client.Do(request)
@@ -178,7 +178,7 @@ func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation 
 	}
 
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Cookie", "JWTCookie="+authToken)
+	request.Header.Set("X-Api-Key", authToken)
 
 	// Perform the http request.
 	resp, err := s.client.Do(request)
@@ -254,7 +254,7 @@ func (s Service) Download(sha256, authToken string) (*bytes.Buffer, error) {
 	}
 
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Cookie", "JWTCookie="+authToken)
+	request.Header.Set("X-Api-Key", authToken)
 
 	// Perform the http request.
 	resp, err := s.client.Do(request)
@@ -282,7 +282,7 @@ func (s Service) Delete(sha256, authToken string) error {
 	}
 
 	request.Header.Set("Content-Type", "application/json")
-	request.Header.Set("Cookie", "JWTCookie="+authToken)
+	request.Header.Set("X-Api-Key", authToken)
 
 	// Perform the http request.
 	resp, err := s.client.Do(request)

@@ -26,11 +26,6 @@ var viewCmd = &cobra.Command{
 		sha256 := strings.ToLower(args[0])
 
 		webSvc := webapi.New(cfg.Credentials.URL)
-		_, err := webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
-		if err != nil {
-			log.Fatalf("failed to authenticate: %v", err)
-		}
-
 		var file entity.File
 		if err := webSvc.GetFile(sha256, &file); err != nil {
 			log.Fatalf("failed to get file: %v", err)

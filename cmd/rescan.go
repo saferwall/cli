@@ -46,13 +46,7 @@ var reScanCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 
-		// Login to saferwall web service
 		webSvc := webapi.New(cfg.Credentials.URL)
-		token, err := webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
-		if err != nil {
-			log.Fatalf("failed to authenticate: %v", err)
-		}
-
 		arg := args[0]
 
 		var sha256List []string
@@ -71,6 +65,6 @@ var reScanCmd = &cobra.Command{
 			}
 		}
 
-		reScanFile(webSvc, sha256List, token)
+		reScanFile(webSvc, sha256List, cfg.Credentials.APIKey)
 	},
 }
