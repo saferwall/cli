@@ -46,12 +46,16 @@ func init() {
 }
 
 type scanSummary struct {
-	SHA256         string     `json:"sha256"`
-	Size           int64      `json:"size"`
-	Classification string     `json:"classification"`
-	FileFormat     string     `json:"file_format"`
-	FileExtension  string     `json:"file_extension"`
-	MultiAV        *avSummary `json:"multiav,omitempty"`
+	SHA256             string     `json:"sha256"`
+	Size               int64      `json:"size"`
+	Classification     string     `json:"classification"`
+	FileFormat         string     `json:"file_format"`
+	FileExtension      string     `json:"file_extension"`
+	Encrypted          bool       `json:"encrypted,omitempty"`
+	DecryptionSuccess  *bool      `json:"decryption_success,omitempty"`
+	SuccessfulPassword string     `json:"successful_password,omitempty"`
+	AttemptedPasswords []string   `json:"attempted_passwords,omitempty"`
+	MultiAV            *avSummary `json:"multiav,omitempty"`
 }
 
 type avSummary struct {
@@ -61,11 +65,15 @@ type avSummary struct {
 
 func buildScanSummary(file entity.File) scanSummary {
 	s := scanSummary{
-		SHA256:         file.SHA256,
-		Size:           file.Size,
-		Classification: file.Classification,
-		FileFormat:     file.Format,
-		FileExtension:  file.Extension,
+		SHA256:             file.SHA256,
+		Size:               file.Size,
+		Classification:     file.Classification,
+		FileFormat:         file.Format,
+		FileExtension:      file.Extension,
+		Encrypted:          file.Encrypted,
+		DecryptionSuccess:  file.DecryptionSuccess,
+		SuccessfulPassword: file.SuccessfulPassword,
+		AttemptedPasswords: file.AttemptedPasswords,
 	}
 
 	if lastScan, ok := file.MultiAV["last_scan"].(map[string]any); ok {

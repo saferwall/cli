@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -307,11 +308,12 @@ func (m scanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.files[i].sha256 = msg.sha256
 
 		if msg.isArchive && len(msg.childHashes) > 0 {
-			// Archive container: mark it as done immediately and track children.
-			m.files[i].state = stateDone
+			// Archive container: poll parent for completion and track children.
+			m.files[i].state = stateScanning
 			m.files[i].isArchive = true
 			m.files[i].childCount = len(msg.childHashes)
 			m.files[i].size = msg.size
+			cmds = append(cmds, pollStatusCmd(i, m.web, msg.sha256))
 
 			archiveName := filepath.Base(m.files[i].filename)
 			for _, childHash := range msg.childHashes {
@@ -502,6 +504,9 @@ func (m scanModel) View() string {
 						f.result.MultiAV.Positives, f.result.MultiAV.EnginesCount)
 				}
 			}
+			if f.result != nil && f.result.Encrypted {
+				line += renderEncryptionStatus(f.result)
+			}
 			doneRows = append(doneRows, doneRow{line})
 		case stateError:
 			line := styleError.Render("✗") + " " + name + "  " + styleError.Render(f.err.Error())
@@ -547,5 +552,23 @@ func derivedHashes(files []entity.DerivedFile) []string {
 		hashes[i] = f.SHA256
 	}
 	return hashes
+}
+
+func renderEncryptionStatus(s *scanSummary) string {
+	if s.DecryptionSuccess == nil {
+		return "  " + styleWarning.Render("encrypted")
+	}
+	if *s.DecryptionSuccess {
+		out := "  " + styleSuccess.Render("decrypted")
+		if s.SuccessfulPassword != "" {
+			out += " " + styleDim.Render("(pwd: "+s.SuccessfulPassword+")")
+		}
+		return out
+	}
+	out := "  " + styleError.Render("decryption failed")
+	if len(s.AttemptedPasswords) > 0 {
+		out += " " + styleDim.Render("(tried: "+strings.Join(s.AttemptedPasswords, ", ")+")")
+	}
+	return out
 }
 
