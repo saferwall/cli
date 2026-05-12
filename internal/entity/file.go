@@ -34,9 +34,20 @@ type File struct {
 	BehaviorReportID string            `json:"behavior_report_id,omitempty"`
 	Status           int               `json:"status,omitempty"`
 	Classification   string            `json:"classification,omitempty"`
-	IsArchive        bool              `json:"is_archive,omitempty"`
-	ArchiveFiles     []string          `json:"archive_files,omitempty"`
-	ArchiveSHA256    string            `json:"archive_sha256,omitempty"`
+	IsArchive          bool          `json:"is_archive,omitempty"`
+	DerivedFiles       []DerivedFile `json:"derived_files,omitempty"`
+	ParentSHA256       string        `json:"parent_sha256,omitempty"`
+	Encrypted          bool          `json:"encrypted"`
+	DecryptionSuccess  *bool         `json:"decryption_success,omitempty"`
+	SuccessfulPassword string        `json:"successful_password,omitempty"`
+	AttemptedPasswords []string      `json:"attempted_passwords,omitempty"`
+}
+
+// DerivedFile is a child file produced during analysis of a parent — either a
+// member extracted from an archive or the decrypted payload of a protected document.
+type DerivedFile struct {
+	Name   string `json:"name"`
+	SHA256 string `json:"sha256"`
 }
 
 // Submission represents a file submission.

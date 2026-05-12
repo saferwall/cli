@@ -88,10 +88,26 @@ func printFileReport(file entity.File, webSvc webapi.Service) {
 		printKV("Packer", strings.Join(file.Packer, ", "))
 	}
 	if file.IsArchive {
-		printKV("Archive", fmt.Sprintf("yes (%d files)", len(file.ArchiveFiles)))
+		printKV("Archive", fmt.Sprintf("yes (%d files)", len(file.DerivedFiles)))
 	}
-	if file.ArchiveSHA256 != "" {
-		printKV("Parent", file.ArchiveSHA256)
+	if file.Encrypted {
+		printKV("Encrypted", "yes")
+		if file.DecryptionSuccess != nil {
+			if *file.DecryptionSuccess {
+				printKV("Decryption", cleanStyle.Render("successful"))
+				if file.SuccessfulPassword != "" {
+					printKV("Password", file.SuccessfulPassword)
+				}
+			} else {
+				printKV("Decryption", detectStyle.Render("failed"))
+				if len(file.AttemptedPasswords) > 0 {
+					printKV("Attempted", strings.Join(file.AttemptedPasswords, ", "))
+				}
+			}
+		}
+	}
+	if file.ParentSHA256 != "" {
+		printKV("Parent", file.ParentSHA256)
 	}
 	if file.FirstSeen != 0 {
 		printKV("First Seen", formatTimestamp(file.FirstSeen))
@@ -103,8 +119,8 @@ func printFileReport(file entity.File, webSvc webapi.Service) {
 
 	if file.IsArchive {
 		// Archives only scan their children, skip verdict and AV results.
-		if len(file.ArchiveFiles) > 0 {
-			printArchiveChildren(file.ArchiveFiles, webSvc)
+		if len(file.DerivedFiles) > 0 {
+			printArchiveChildren(file.DerivedFiles, webSvc)
 		}
 	} else {
 		// Classification.
@@ -122,6 +138,7 @@ type childSummary struct {
 	sha256         string
 	classification string
 	format         string
+	size           int64
 	positives      int
 	enginesCount   int
 	err            error
@@ -136,6 +153,7 @@ func fetchChildSummary(sha256 string, webSvc webapi.Service) childSummary {
 		sha256:         sha256,
 		classification: file.Classification,
 		format:         file.Format,
+		size:           file.Size,
 	}
 	if file.Extension != "" {
 		cs.format += "/" + file.Extension
@@ -153,28 +171,30 @@ func fetchChildSummary(sha256 string, webSvc webapi.Service) childSummary {
 	return cs
 }
 
-func printArchiveChildren(archiveFiles []string, webSvc webapi.Service) {
-	fmt.Println(headerStyle.Render(fmt.Sprintf("Archive Contents (%d files)", len(archiveFiles))))
+func printArchiveChildren(derivedFiles []entity.DerivedFile, webSvc webapi.Service) {
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Archive Contents (%d files)", len(derivedFiles))))
 	fmt.Println()
 
 	// Table header.
 	fmtCol := lipgloss.NewStyle().Width(16)
+	sizeCol := lipgloss.NewStyle().Width(10)
 	avCol := lipgloss.NewStyle().Width(14)
 	clsCol := lipgloss.NewStyle().Width(12)
 
-	fmt.Printf("  %s  %s %s %s\n",
+	fmt.Printf("  %s  %s %s %s %s\n",
 		styleDim.Render(fmt.Sprintf("%-64s", "SHA256")),
 		styleDim.Render(fmtCol.Render("FORMAT")),
+		styleDim.Render(sizeCol.Render("SIZE")),
 		styleDim.Render(avCol.Render("DETECTIONS")),
 		styleDim.Render(clsCol.Render("VERDICT")),
 	)
-	fmt.Printf("  %s\n", styleDim.Render(strings.Repeat("─", 108)))
+	fmt.Printf("  %s\n", styleDim.Render(strings.Repeat("─", 119)))
 
-	for _, sha := range archiveFiles {
-		cs := fetchChildSummary(sha, webSvc)
+	for _, df := range derivedFiles {
+		cs := fetchChildSummary(df.SHA256, webSvc)
 		if cs.err != nil {
 			fmt.Printf("  %s  %s\n",
-				sha,
+				df.SHA256,
 				styleError.Render("error: "+cs.err.Error()),
 			)
 			continue
@@ -187,9 +207,10 @@ func printArchiveChildren(archiveFiles []string, webSvc webapi.Service) {
 			detStr = cleanStyle.Render(detStr)
 		}
 
-		fmt.Printf("  %s  %s %s %s\n",
+		fmt.Printf("  %s  %s %s %s %s\n",
 			cs.sha256,
 			fmtCol.Render(cs.format),
+			sizeCol.Render(formatSize(cs.size)),
 			avCol.Render(detStr),
 			clsCol.Render(renderClassification(cs.classification)),
 		)
