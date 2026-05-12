@@ -25,7 +25,7 @@ func ListUsers(authToken string) ([]entity.User, error) {
 		return nil, err
 	}
 
-	request.Header.Set("Cookie", "JWTCookie="+authToken)
+	request.Header.Set("X-Api-Key", authToken)
 
 	// Perform the http post request.
 	client := &http.Client{}
@@ -69,7 +69,7 @@ func ListUsersWithIndex(authToken string, page, perPage int) ([]entity.User, err
 		return nil, err
 	}
 
-	request.Header.Set("Cookie", "JWTCookie="+authToken)
+	request.Header.Set("X-Api-Key", authToken)
 
 	// Perform the http post request.
 	client := &http.Client{}

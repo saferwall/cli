@@ -42,19 +42,13 @@ var downloadCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		arg := args[0]
 
-		// Login to saferwall web service.
 		webSvc := webapi.New(cfg.Credentials.URL)
-		token, err := webSvc.Login(cfg.Credentials.Username, cfg.Credentials.Password)
-		if err != nil {
-			log.Fatalf("failed to authenticate: %v", err)
-		}
-
 		hashes := collectHashes(arg)
 		if len(hashes) == 0 {
 			log.Fatalf("no valid SHA256 hashes found in %q", arg)
 		}
 
-		downloadFiles(webSvc, token, hashes)
+		downloadFiles(webSvc, cfg.Credentials.APIKey, hashes)
 	},
 }
 

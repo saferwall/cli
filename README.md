@@ -12,7 +12,7 @@ go install github.com/saferwall/cli@latest
 
 ## Getting Started
 
-To use the CLI you need a [Saferwall](https://saferwall.com) account. Run the `init` command to interactively set up your credentials:
+To use the CLI you need a [Saferwall](https://saferwall.com) API key. Run the `init` command to interactively set up your credentials:
 
 ```sh
 saferwall-cli init
@@ -20,8 +20,7 @@ saferwall-cli init
 
 This launches an interactive prompt that asks for:
 - **URL** — the Saferwall API endpoint (defaults to `https://api.saferwall.com`)
-- **Username** — your Saferwall account username
-- **Password** — your Saferwall account password
+- **API Key** — your Saferwall API key
 
 The credentials are saved to `~/.config/saferwall/config.toml`. To reconfigure, delete that file and run `init` again.
 
