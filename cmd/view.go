@@ -57,6 +57,9 @@ func printFileReport(file entity.File, webSvc webapi.Service) {
 	// File identification.
 	fmt.Println(headerStyle.Render("Identification"))
 	printKV("SHA256", file.SHA256)
+	if name := submissionFilename(file.Submissions); name != "" {
+		printKV("Filename", name)
+	}
 	if !file.IsArchive {
 		printKV("MD5", file.MD5)
 		printKV("SHA1", file.SHA1)
@@ -323,4 +326,15 @@ func formatSize(size int64) string {
 func formatTimestamp(ts int64) string {
 	t := time.Unix(ts, 0)
 	return t.Format("2006-01-02 15:04:05 UTC")
+}
+
+// submissionFilename returns the first submission filename that does not look
+// like a bare hash (MD5/SHA1/SHA256), or empty string if none is found.
+func submissionFilename(submissions []entity.Submission) string {
+	for _, s := range submissions {
+		if s.Filename != "" && !looksLikeHash(s.Filename) {
+			return s.Filename
+		}
+	}
+	return ""
 }
