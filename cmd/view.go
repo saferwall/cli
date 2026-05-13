@@ -171,19 +171,21 @@ func printArchiveChildren(derivedFiles []entity.DerivedFile, webSvc webapi.Servi
 	fmt.Println()
 
 	// Table header.
+	nameCol := lipgloss.NewStyle().Width(28)
 	fmtCol := lipgloss.NewStyle().Width(16)
 	sizeCol := lipgloss.NewStyle().Width(10)
 	avCol := lipgloss.NewStyle().Width(14)
 	clsCol := lipgloss.NewStyle().Width(12)
 
-	fmt.Printf("  %s  %s %s %s %s\n",
+	fmt.Printf("  %s  %s %s %s %s %s\n",
 		styleDim.Render(fmt.Sprintf("%-64s", "SHA256")),
+		styleDim.Render(nameCol.Render("NAME")),
 		styleDim.Render(fmtCol.Render("FORMAT")),
 		styleDim.Render(sizeCol.Render("SIZE")),
 		styleDim.Render(avCol.Render("DETECTIONS")),
 		styleDim.Render(clsCol.Render("VERDICT")),
 	)
-	fmt.Printf("  %s\n", styleDim.Render(strings.Repeat("─", 119)))
+	fmt.Printf("  %s\n", styleDim.Render(strings.Repeat("─", 148)))
 
 	for _, df := range derivedFiles {
 		cs := fetchChildSummary(df.SHA256, webSvc)
@@ -202,8 +204,14 @@ func printArchiveChildren(derivedFiles []entity.DerivedFile, webSvc webapi.Servi
 			detStr = cleanStyle.Render(detStr)
 		}
 
-		fmt.Printf("  %s  %s %s %s %s\n",
+		name := df.Name
+		if len(name) > 28 {
+			name = name[:25] + "..."
+		}
+
+		fmt.Printf("  %s  %s %s %s %s %s\n",
 			cs.sha256,
+			nameCol.Render(name),
 			fmtCol.Render(cs.format),
 			sizeCol.Render(formatSize(cs.size)),
 			avCol.Render(detStr),
