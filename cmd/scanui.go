@@ -320,7 +320,7 @@ func (m scanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				s := spinner.New()
 				s.Spinner = spinner.Dot
 				m.files = append(m.files, fileRow{
-					filename: archiveName + "/" + truncSha(childHash),
+					filename: archiveName + "/" + childHash,
 					sha256:   childHash,
 					state:    stateScanning,
 					spinner:  s,
@@ -470,10 +470,9 @@ func (m scanModel) View() string {
 			if m.isRescan {
 				label = " Rescanning "
 			}
-			s += f.spinner.View() + styleLabel.Render(label) + name + " ...\n"
+			s += f.spinner.View() + styleLabel.Render(label) + displayName(name) + " ...\n"
 		case stateScanning:
-			sha := truncSha(f.sha256)
-			s += f.spinner.View() + styleLabel.Render(" Scanning   ") + name + " " + styleDim.Render(sha) + "\n"
+			s += f.spinner.View() + styleLabel.Render(" Scanning   ") + displayName(name) + " " + styleDim.Render(f.sha256) + "\n"
 		}
 	}
 
@@ -486,8 +485,7 @@ func (m scanModel) View() string {
 		name := filepath.Base(f.filename)
 		switch f.state {
 		case stateDone:
-			sha := truncSha(f.sha256)
-			line := styleSuccess.Render("✓") + " " + name + "  " + styleDim.Render(sha)
+			line := styleSuccess.Render("✓") + " " + displayName(name) + "  " + styleDim.Render(f.sha256)
 			if f.isArchive {
 				line += "  " + styleDim.Render(formatSize(f.size))
 				line += "  " + styleLabel.Render(fmt.Sprintf("archive (%d files)", f.childCount))
@@ -509,7 +507,7 @@ func (m scanModel) View() string {
 			}
 			doneRows = append(doneRows, doneRow{line})
 		case stateError:
-			line := styleError.Render("✗") + " " + name + "  " + styleError.Render(f.err.Error())
+			line := styleError.Render("✗") + " " + displayName(name) + "  " + styleError.Render(f.err.Error())
 			doneRows = append(doneRows, doneRow{line})
 		}
 	}
@@ -544,6 +542,29 @@ func truncSha(sha string) string {
 		return sha[:12]
 	}
 	return sha
+}
+
+// looksLikeHash returns true if s is a hex string of a common hash length
+// (MD5=32, SHA1=40, SHA256=64).
+func looksLikeHash(s string) bool {
+	if len(s) != 32 && len(s) != 40 && len(s) != 64 {
+		return false
+	}
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			return false
+		}
+	}
+	return true
+}
+
+// displayName returns the name as-is, unless it looks like a hash, in which
+// case it is truncated to the first 12 characters.
+func displayName(name string) string {
+	if looksLikeHash(name) {
+		return truncSha(name)
+	}
+	return name
 }
 
 func derivedHashes(files []entity.DerivedFile) []string {
