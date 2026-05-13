@@ -59,12 +59,12 @@ type scanModel struct {
 // --- Messages ---
 
 type fileUploadedMsg struct {
-	index       int
-	sha256      string
-	size        int64
-	err         error
-	isArchive   bool
-	childHashes []string
+	index    int
+	sha256   string
+	size     int64
+	err      error
+	isArchive bool
+	children []entity.DerivedFile
 }
 
 type fileScanStatusMsg struct {
@@ -74,9 +74,11 @@ type fileScanStatusMsg struct {
 }
 
 type fileScanDoneMsg struct {
-	index   int
-	summary scanSummary
-	err     error
+	index    int
+	summary  scanSummary
+	isArchive bool
+	children []entity.DerivedFile
+	err      error
 }
 
 // --- Commands (async I/O) ---
@@ -99,16 +101,13 @@ func uploadFileCmd(index int, web webapi.Service, filename, token string) tea.Cm
 			if err != nil {
 				return fileUploadedMsg{index: index, err: fmt.Errorf("upload: %w", err)}
 			}
-			// Use the SHA256 from the server response. For single-file ZIPs,
-			// the server extracts the file and returns the child's hash, not
-			// the ZIP's hash. For multi-file ZIPs, the server returns the
-			// archive doc with child hashes so we can track them individually.
+			// Don't use is_archive from the upload response: the file hasn't been
+			// processed yet, so the field is always false at this point. Archive
+			// detection happens in fetchResultCmd once the parent scan completes.
 			return fileUploadedMsg{
-				index:       index,
-				sha256:      file.SHA256,
-				size:        file.Size,
-				isArchive:   file.IsArchive,
-				childHashes: derivedHashes(file.DerivedFiles),
+				index:  index,
+				sha256: file.SHA256,
+				size:   file.Size,
 			}
 		} else if forceRescanFlag {
 			// Fetch the existing file to check if it's an archive.
@@ -125,11 +124,11 @@ func uploadFileCmd(index int, web webapi.Service, filename, token string) tea.Cm
 					}
 				}
 				return fileUploadedMsg{
-					index:       index,
-					sha256:      sha256,
-					size:        file.Size,
-					isArchive:   true,
-					childHashes: derivedHashes(file.DerivedFiles),
+					index:     index,
+					sha256:    sha256,
+					size:      file.Size,
+					isArchive: true,
+					children:  file.DerivedFiles,
 				}
 			}
 
@@ -159,8 +158,12 @@ func fetchResultCmd(index int, web webapi.Service, sha256 string) tea.Cmd {
 		if err := web.GetFile(sha256, &file); err != nil {
 			return fileScanDoneMsg{index: index, err: fmt.Errorf("get file report: %w", err)}
 		}
-		summary := buildScanSummary(file)
-		return fileScanDoneMsg{index: index, summary: summary}
+		return fileScanDoneMsg{
+			index:     index,
+			summary:   buildScanSummary(file),
+			isArchive: file.IsArchive,
+			children:  file.DerivedFiles,
+		}
 	}
 }
 
@@ -189,11 +192,11 @@ func rescanFileCmd(index int, web webapi.Service, sha256, token string) tea.Cmd 
 				}
 			}
 			return fileUploadedMsg{
-				index:       index,
-				sha256:      sha256,
-				size:        file.Size,
-				isArchive:   true,
-				childHashes: derivedHashes(file.DerivedFiles),
+				index:     index,
+				sha256:    sha256,
+				size:      file.Size,
+				isArchive: true,
+				children:  file.DerivedFiles,
 			}
 		}
 
@@ -307,27 +310,27 @@ func (m scanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.files[i].sha256 = msg.sha256
 
-		if msg.isArchive && len(msg.childHashes) > 0 {
+		if msg.isArchive && len(msg.children) > 0 {
 			// Archive container: poll parent for completion and track children.
 			m.files[i].state = stateScanning
 			m.files[i].isArchive = true
-			m.files[i].childCount = len(msg.childHashes)
+			m.files[i].childCount = len(msg.children)
 			m.files[i].size = msg.size
 			cmds = append(cmds, pollStatusCmd(i, m.web, msg.sha256))
 
 			archiveName := filepath.Base(m.files[i].filename)
-			for _, childHash := range msg.childHashes {
+			for _, df := range msg.children {
 				s := spinner.New()
 				s.Spinner = spinner.Dot
 				m.files = append(m.files, fileRow{
-					filename: archiveName + "/" + childHash,
-					sha256:   childHash,
+					filename: archiveName + "/" + childDisplayName(df),
+					sha256:   df.SHA256,
 					state:    stateScanning,
 					spinner:  s,
 				})
 				childIdx := len(m.files) - 1
 				cmds = append(cmds,
-					pollStatusCmd(childIdx, m.web, childHash),
+					pollStatusCmd(childIdx, m.web, df.SHA256),
 					m.files[childIdx].spinner.Tick,
 				)
 			}
@@ -364,9 +367,33 @@ func (m scanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			m.files[i].state = stateDone
 			m.files[i].result = &msg.summary
+			// Late archive detection: for new uploads is_archive is false at
+			// upload time and only becomes true once the backend processes the
+			// file. The rescan/forceRescan paths pre-populate isArchive via
+			// fileUploadedMsg, so skip them here to avoid adding duplicate rows.
+			if msg.isArchive && !m.files[i].isArchive && len(msg.children) > 0 {
+				m.files[i].isArchive = true
+				m.files[i].childCount = len(msg.children)
+				archiveName := filepath.Base(m.files[i].filename)
+				for _, df := range msg.children {
+					s := spinner.New()
+					s.Spinner = spinner.Dot
+					m.files = append(m.files, fileRow{
+						filename: archiveName + "/" + childDisplayName(df),
+						sha256:   df.SHA256,
+						state:    stateScanning,
+						spinner:  s,
+					})
+					childIdx := len(m.files) - 1
+					cmds = append(cmds,
+						pollStatusCmd(childIdx, m.web, df.SHA256),
+						m.files[childIdx].spinner.Tick,
+					)
+				}
+			}
 		}
-		cmd := m.maybeQuitOrNext()
-		return m, cmd
+		cmds = append(cmds, m.maybeQuitOrNext())
+		return m, tea.Batch(cmds...)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -487,7 +514,11 @@ func (m scanModel) View() string {
 		case stateDone:
 			line := styleSuccess.Render("✓") + " " + displayName(name) + "  " + styleDim.Render(f.sha256)
 			if f.isArchive {
-				line += "  " + styleDim.Render(formatSize(f.size))
+				size := f.size
+				if f.result != nil {
+					size = f.result.Size
+				}
+				line += "  " + styleDim.Render(formatSize(size))
 				line += "  " + styleLabel.Render(fmt.Sprintf("archive (%d files)", f.childCount))
 			} else if f.result != nil {
 				line += "  " + styleDim.Render(formatSize(f.result.Size))
@@ -567,12 +598,13 @@ func displayName(name string) string {
 	return name
 }
 
-func derivedHashes(files []entity.DerivedFile) []string {
-	hashes := make([]string, len(files))
-	for i, f := range files {
-		hashes[i] = f.SHA256
+// childDisplayName returns the archive entry name when available, falling back
+// to the truncated SHA256 so the row always has a meaningful label.
+func childDisplayName(df entity.DerivedFile) string {
+	if df.Name != "" {
+		return df.Name
 	}
-	return hashes
+	return truncSha(df.SHA256)
 }
 
 func renderEncryptionStatus(s *scanSummary) string {
