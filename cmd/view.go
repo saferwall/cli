@@ -57,6 +57,9 @@ func printFileReport(file entity.File, webSvc webapi.Service) {
 	// File identification.
 	fmt.Println(headerStyle.Render("Identification"))
 	printKV("SHA256", file.SHA256)
+	if name := submissionFilename(file.Submissions); name != "" {
+		printKV("Filename", name)
+	}
 	if !file.IsArchive {
 		printKV("MD5", file.MD5)
 		printKV("SHA1", file.SHA1)
@@ -171,19 +174,21 @@ func printArchiveChildren(derivedFiles []entity.DerivedFile, webSvc webapi.Servi
 	fmt.Println()
 
 	// Table header.
+	nameCol := lipgloss.NewStyle().Width(28)
 	fmtCol := lipgloss.NewStyle().Width(16)
 	sizeCol := lipgloss.NewStyle().Width(10)
 	avCol := lipgloss.NewStyle().Width(14)
 	clsCol := lipgloss.NewStyle().Width(12)
 
-	fmt.Printf("  %s  %s %s %s %s\n",
+	fmt.Printf("  %s  %s %s %s %s %s\n",
 		styleDim.Render(fmt.Sprintf("%-64s", "SHA256")),
+		styleDim.Render(nameCol.Render("NAME")),
 		styleDim.Render(fmtCol.Render("FORMAT")),
 		styleDim.Render(sizeCol.Render("SIZE")),
 		styleDim.Render(avCol.Render("DETECTIONS")),
 		styleDim.Render(clsCol.Render("VERDICT")),
 	)
-	fmt.Printf("  %s\n", styleDim.Render(strings.Repeat("─", 119)))
+	fmt.Printf("  %s\n", styleDim.Render(strings.Repeat("─", 148)))
 
 	for _, df := range derivedFiles {
 		cs := fetchChildSummary(df.SHA256, webSvc)
@@ -202,8 +207,14 @@ func printArchiveChildren(derivedFiles []entity.DerivedFile, webSvc webapi.Servi
 			detStr = cleanStyle.Render(detStr)
 		}
 
-		fmt.Printf("  %s  %s %s %s %s\n",
+		name := df.Name
+		if len(name) > 28 {
+			name = name[:25] + "..."
+		}
+
+		fmt.Printf("  %s  %s %s %s %s %s\n",
 			cs.sha256,
+			nameCol.Render(name),
 			fmtCol.Render(cs.format),
 			sizeCol.Render(formatSize(cs.size)),
 			avCol.Render(detStr),
@@ -315,4 +326,15 @@ func formatSize(size int64) string {
 func formatTimestamp(ts int64) string {
 	t := time.Unix(ts, 0)
 	return t.Format("2006-01-02 15:04:05 UTC")
+}
+
+// submissionFilename returns the first submission filename that does not look
+// like a bare hash (MD5/SHA1/SHA256), or empty string if none is found.
+func submissionFilename(submissions []entity.Submission) string {
+	for _, s := range submissions {
+		if s.Filename != "" && !looksLikeHash(s.Filename) {
+			return s.Filename
+		}
+	}
+	return ""
 }
