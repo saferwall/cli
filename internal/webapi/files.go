@@ -300,3 +300,80 @@ func (s Service) Delete(sha256, authToken string) error {
 	defer resp.Body.Close()
 	return nil
 }
+
+// SearchItem is the flattened file representation returned by the search endpoint.
+type SearchItem struct {
+	ID            string         `json:"id"`
+	Name          string         `json:"name"`
+	Format        string         `json:"file_format"`
+	Extension     string         `json:"file_extension"`
+	Size          int64          `json:"size"`
+	FirstSeen     int64          `json:"first_seen"`
+	LastScanned   int64          `json:"last_scanned"`
+	Classification string        `json:"class"`
+	MultiAV       SearchMultiAV  `json:"multiav"`
+	Tags          map[string]any `json:"tags"`
+}
+
+// SearchMultiAV holds the condensed AV stats returned in search results.
+type SearchMultiAV struct {
+	Hits  int `json:"hits"`
+	Total int `json:"total"`
+}
+
+// SearchResult is the paginated response from the search endpoint.
+type SearchResult struct {
+	Page       int          `json:"page"`
+	PerPage    int          `json:"per_page"`
+	PageCount  int          `json:"page_count"`
+	TotalCount int          `json:"total_count"`
+	Items      []SearchItem `json:"items"`
+}
+
+// SearchFiles calls POST /v1/files/search/ with the given query expression.
+func (s Service) SearchFiles(query, authToken string, page, perPage int) (*SearchResult, error) {
+	url := s.filesURL + "search/"
+	requestBody, err := json.Marshal(map[string]any{
+		"query":    query,
+		"page":     page,
+		"per_page": perPage,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("X-Api-Key", authToken)
+
+	resp, err := s.client.Do(request)
+	if err != nil {
+		return nil, err
+	}
+
+	body := &bytes.Buffer{}
+	_, err = body.ReadFrom(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		var jsonBody map[string]any
+		if jsonErr := json.Unmarshal(body.Bytes(), &jsonBody); jsonErr == nil {
+			if msg, ok := jsonBody["message"].(string); ok {
+				return nil, errors.New(msg)
+			}
+		}
+		return nil, fmt.Errorf("search failed: HTTP %d", resp.StatusCode)
+	}
+
+	var result SearchResult
+	if err := json.Unmarshal(body.Bytes(), &result); err != nil {
+		return nil, err
+	}
+	return &result, nil
+}
