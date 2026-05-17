@@ -60,4 +60,5 @@ func init() {
 	rootCmd.AddCommand(reScanCmd)
 	rootCmd.AddCommand(soukCmd)
 	rootCmd.AddCommand(downloadCmd)
+	rootCmd.AddCommand(searchCmd)
 }
