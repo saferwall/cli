@@ -7,7 +7,6 @@ package webapi
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -18,6 +17,50 @@ import (
 
 	"github.com/saferwall/cli/internal/entity"
 )
+
+// maxErrorBodyLen bounds how much of an error response body is echoed
+// back in error messages.
+const maxErrorBodyLen = 512
+
+// apiError builds an error from a non-2xx response, preferring the API's
+// own `message` field when the body contains one.
+func apiError(statusCode int, body []byte) error {
+	var jsonBody struct {
+		Message string `json:"message"`
+	}
+	if err := json.Unmarshal(body, &jsonBody); err == nil && jsonBody.Message != "" {
+		return fmt.Errorf("HTTP %d: %s", statusCode, jsonBody.Message)
+	}
+
+	trimmed := bytes.TrimSpace(body)
+	if len(trimmed) > maxErrorBodyLen {
+		trimmed = trimmed[:maxErrorBodyLen]
+	}
+	if len(trimmed) == 0 {
+		return fmt.Errorf("HTTP %d", statusCode)
+	}
+	return fmt.Errorf("HTTP %d: %s", statusCode, trimmed)
+}
+
+// do sends the request and returns the response body. Any non-2xx
+// response is converted into an error via apiError.
+func (s Service) do(req *http.Request) ([]byte, error) {
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
+		return nil, apiError(resp.StatusCode, body)
+	}
+	return body, nil
+}
 
 func (s Service) newfileUploadRequest(fieldname, filename string, params map[string]string) (*http.Request, error) {
 	file, err := os.Open(filename)
@@ -50,71 +93,51 @@ func (s Service) newfileUploadRequest(fieldname, filename string, params map[str
 	}
 
 	req, err := http.NewRequest("POST", s.filesURL, body)
+	if err != nil {
+		return nil, err
+	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	return req, err
+	return req, nil
 }
 
 // FileExists determines file existence.
-// TODO: use HEAD instead.
 func (s Service) FileExists(sha256 string) (bool, error) {
-
 	url := s.filesURL + sha256
 	resp, err := s.client.Head(url)
 	if err != nil {
 		return false, err
 	}
-
-	if resp.StatusCode == http.StatusNotFound {
-		return false, nil
-	}
-
 	defer resp.Body.Close()
-	return true, nil
+
+	switch {
+	case resp.StatusCode == http.StatusNotFound:
+		return false, nil
+	case resp.StatusCode >= http.StatusOK && resp.StatusCode < http.StatusMultipleChoices:
+		return true, nil
+	default:
+		return false, apiError(resp.StatusCode, nil)
+	}
 }
 
 // ListFiles list all the files in DB.
 func (s Service) ListFiles(authToken string, page int) (*Pages, error) {
-
-	var pages Pages
 	url := fmt.Sprintf("%s?per_page=%d&page=%d&fields=sha256", s.filesURL, 1000, page)
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-
 	request.Header.Set("X-Api-Key", authToken)
 
-	// Perform the http request.
-	resp, err := s.client.Do(request)
+	body, err := s.do(request)
 	if err != nil {
 		return nil, err
 	}
 
-	// Read the response.
-	body := &bytes.Buffer{}
-	_, err = body.ReadFrom(resp.Body)
-	if err != nil {
+	var pages Pages
+	if err := json.Unmarshal(body, &pages); err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		var jsonBody map[string]any
-		err = json.Unmarshal(body.Bytes(), &jsonBody)
-		if err != nil {
-			return nil, err
-		}
-		msg := jsonBody["message"].(string)
-		return nil, errors.New(msg)
-	}
-
-	err = json.Unmarshal(body.Bytes(), &pages)
-	if err != nil {
-		return nil, err
-	}
-
 	return &pages, nil
-
 }
 
 func (s Service) Scan(filepath string, authToken, preferredOS string, enableDetonation bool, timeout int) (*entity.File, error) {
@@ -129,24 +152,11 @@ func (s Service) Scan(filepath string, authToken, preferredOS string, enableDeto
 	if err != nil {
 		return nil, err
 	}
-
-	// Add our auth token.
 	request.Header.Set("X-Api-Key", authToken)
 
-	// Perform the http request.
-	resp, err := s.client.Do(request)
+	body, err := s.do(request)
 	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusCreated {
-		return nil, fmt.Errorf("upload failed: HTTP %d: %s", resp.StatusCode, body)
+		return nil, fmt.Errorf("upload failed: %w", err)
 	}
 
 	var file entity.File
@@ -157,7 +167,6 @@ func (s Service) Scan(filepath string, authToken, preferredOS string, enableDeto
 }
 
 func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation bool, timeout int) error {
-
 	url := s.filesURL + sha256 + "/rescan"
 
 	requestBody, err := json.Marshal(map[string]any{
@@ -169,134 +178,82 @@ func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation 
 		return err
 	}
 
-	body := bytes.NewBuffer(requestBody)
-	request, err := http.NewRequest("POST", url, body)
+	request, err := http.NewRequest("POST", url, bytes.NewBuffer(requestBody))
 	if err != nil {
 		return err
 	}
-
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-Api-Key", authToken)
 
-	// Perform the http request.
-	resp, err := s.client.Do(request)
-	if err != nil {
-		return err
-	}
-
-	// Read the response.
-	body = &bytes.Buffer{}
-	_, err = body.ReadFrom(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	resp.Body.Close()
-	return nil
+	_, err = s.do(request)
+	return err
 }
 
 // GetFile retrieves the file report given a sha256.
 func (s Service) GetFile(sha256 string, file *entity.File) error {
-
 	url := s.filesURL + sha256
 
 	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return err
 	}
-
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
-	resp, err := s.client.Do(req)
+
+	body, err := s.do(req)
 	if err != nil {
 		return err
 	}
-
-	defer resp.Body.Close()
-	d, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	return json.Unmarshal(d, &file)
+	return json.Unmarshal(body, file)
 }
 
 // GetFileStatus retrieves only the status field of a file.
 func (s Service) GetFileStatus(sha256 string) (int, error) {
 	url := s.filesURL + sha256 + "?fields=status"
 
-	resp, err := s.client.Get(url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return 0, err
 	}
-	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return 0, fmt.Errorf("failed to get file status: HTTP %d", resp.StatusCode)
+	body, err := s.do(req)
+	if err != nil {
+		return 0, fmt.Errorf("failed to get file status: %w", err)
 	}
 
 	var result struct {
 		Status int `json:"status"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(body, &result); err != nil {
 		return 0, err
 	}
 	return result.Status, nil
 }
 
 func (s Service) Download(sha256, authToken string) (*bytes.Buffer, error) {
-
 	url := s.filesURL + sha256 + "/download"
 	request, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-
-	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-Api-Key", authToken)
 
-	// Perform the http request.
-	resp, err := s.client.Do(request)
+	body, err := s.do(request)
 	if err != nil {
 		return nil, err
 	}
-
-	// Read the response.
-	body := &bytes.Buffer{}
-	_, err = body.ReadFrom(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	defer resp.Body.Close()
-	return body, nil
+	return bytes.NewBuffer(body), nil
 }
 
 func (s Service) Delete(sha256, authToken string) error {
-
 	url := s.filesURL + sha256
 	request, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
 		return err
 	}
-
-	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-Api-Key", authToken)
 
-	// Perform the http request.
-	resp, err := s.client.Do(request)
-	if err != nil {
-		return err
-	}
-
-	// Read the response.
-	body := &bytes.Buffer{}
-	_, err = body.ReadFrom(resp.Body)
-	if err != nil {
-		return err
-	}
-
-	defer resp.Body.Close()
-	return nil
+	_, err = s.do(request)
+	return err
 }
 
 // SearchItem is the flattened file representation returned by the search endpoint.
@@ -347,30 +304,13 @@ func (s Service) SearchFiles(query, authToken string, page, perPage int) (*Searc
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("X-Api-Key", authToken)
 
-	resp, err := s.client.Do(request)
+	body, err := s.do(request)
 	if err != nil {
-		return nil, err
-	}
-
-	body := &bytes.Buffer{}
-	_, err = body.ReadFrom(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		var jsonBody map[string]any
-		if jsonErr := json.Unmarshal(body.Bytes(), &jsonBody); jsonErr == nil {
-			if msg, ok := jsonBody["message"].(string); ok {
-				return nil, errors.New(msg)
-			}
-		}
-		return nil, fmt.Errorf("search failed: HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("search failed: %w", err)
 	}
 
 	var result SearchResult
-	if err := json.Unmarshal(body.Bytes(), &result); err != nil {
+	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, err
 	}
 	return &result, nil

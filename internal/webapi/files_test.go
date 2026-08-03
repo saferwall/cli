@@ -134,6 +134,23 @@ func TestRescan(t *testing.T) {
 	}
 }
 
+func TestRescanError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"message": "file not found"})
+	}))
+	defer srv.Close()
+
+	svc := New(srv.URL)
+	err := svc.Rescan(testSHA256, testAPIKey, "windows-10-x64", false, 15)
+	if err == nil {
+		t.Fatal("Rescan() expected error on HTTP 404, got nil")
+	}
+	if want := "HTTP 404: file not found"; err.Error() != want {
+		t.Errorf("Rescan() error = %q, want %q", err.Error(), want)
+	}
+}
+
 func TestFileExists(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodHead {
@@ -163,6 +180,36 @@ func TestFileExists(t *testing.T) {
 	}
 	if exists {
 		t.Error("FileExists() = true for unknown hash, want false")
+	}
+}
+
+func TestFileExistsServerError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer srv.Close()
+
+	svc := New(srv.URL)
+	if _, err := svc.FileExists(testSHA256); err == nil {
+		t.Error("FileExists() expected error on HTTP 500, got nil")
+	}
+}
+
+func TestGetFileError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		json.NewEncoder(w).Encode(map[string]string{"message": "document does not exist"})
+	}))
+	defer srv.Close()
+
+	svc := New(srv.URL)
+	var file entity.File
+	err := svc.GetFile(testSHA256, &file)
+	if err == nil {
+		t.Fatal("GetFile() expected error on HTTP 404, got nil")
+	}
+	if want := "HTTP 404: document does not exist"; err.Error() != want {
+		t.Errorf("GetFile() error = %q, want %q", err.Error(), want)
 	}
 }
 
@@ -267,8 +314,8 @@ func TestListFilesError(t *testing.T) {
 	if err == nil {
 		t.Fatal("ListFiles() expected error on HTTP 401, got nil")
 	}
-	if err.Error() != "invalid api key" {
-		t.Errorf("ListFiles() error = %q, want %q", err.Error(), "invalid api key")
+	if want := "HTTP 401: invalid api key"; err.Error() != want {
+		t.Errorf("ListFiles() error = %q, want %q", err.Error(), want)
 	}
 }
 
@@ -336,8 +383,8 @@ func TestSearchFilesErrorWithMessage(t *testing.T) {
 	if err == nil {
 		t.Fatal("SearchFiles() expected error on HTTP 400, got nil")
 	}
-	if err.Error() != "invalid query" {
-		t.Errorf("SearchFiles() error = %q, want %q", err.Error(), "invalid query")
+	if want := "search failed: HTTP 400: invalid query"; err.Error() != want {
+		t.Errorf("SearchFiles() error = %q, want %q", err.Error(), want)
 	}
 }
 
@@ -373,6 +420,42 @@ func TestDownload(t *testing.T) {
 	}
 	if buf.String() != string(content) {
 		t.Errorf("Download() = %q, want %q", buf.String(), content)
+	}
+}
+
+func TestDownloadError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+		json.NewEncoder(w).Encode(map[string]string{"message": "download not allowed"})
+	}))
+	defer srv.Close()
+
+	svc := New(srv.URL)
+	buf, err := svc.Download(testSHA256, testAPIKey)
+	if err == nil {
+		t.Fatal("Download() expected error on HTTP 403, got nil")
+	}
+	if buf != nil {
+		t.Error("Download() returned a buffer alongside an error; the error body must not be saved as a sample")
+	}
+	if want := "HTTP 403: download not allowed"; err.Error() != want {
+		t.Errorf("Download() error = %q, want %q", err.Error(), want)
+	}
+}
+
+func TestDeleteError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusUnauthorized)
+	}))
+	defer srv.Close()
+
+	svc := New(srv.URL)
+	err := svc.Delete(testSHA256, testAPIKey)
+	if err == nil {
+		t.Fatal("Delete() expected error on HTTP 401, got nil")
+	}
+	if want := "HTTP 401"; err.Error() != want {
+		t.Errorf("Delete() error = %q, want %q", err.Error(), want)
 	}
 }
 
