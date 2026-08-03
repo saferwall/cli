@@ -43,7 +43,8 @@ type fileRow struct {
 	err        error
 	pollCount  int
 	isArchive  bool // true for ZIP containers with multiple files
-	childCount int  // number of extracted files
+	childCount int  // number of unique extracted files
+	childDupes int  // extracted entries sharing the hash of another child
 }
 
 // Top-level bubbletea model.
@@ -59,12 +60,13 @@ type scanModel struct {
 // --- Messages ---
 
 type fileUploadedMsg struct {
-	index    int
-	sha256   string
-	size     int64
-	err      error
-	isArchive bool
-	children []entity.DerivedFile
+	index      int
+	sha256     string
+	size       int64
+	err        error
+	isArchive  bool
+	children   []entity.DerivedFile
+	childDupes int // archive entries skipped because they duplicate another child's hash
 }
 
 type fileScanStatusMsg struct {
@@ -74,11 +76,12 @@ type fileScanStatusMsg struct {
 }
 
 type fileScanDoneMsg struct {
-	index    int
-	summary  scanSummary
-	isArchive bool
-	children []entity.DerivedFile
-	err      error
+	index      int
+	summary    scanSummary
+	isArchive  bool
+	children   []entity.DerivedFile
+	childDupes int // archive entries skipped because they duplicate another child's hash
+	err        error
 }
 
 // --- Commands (async I/O) ---
@@ -117,18 +120,20 @@ func uploadFileCmd(index int, web webapi.Service, filename, token string) tea.Cm
 			}
 
 			if file.IsArchive && len(file.DerivedFiles) > 0 {
-				// Archive: rescan each child, not the container itself.
-				for _, df := range file.DerivedFiles {
+				// Archive: rescan each unique child, not the container itself.
+				children := uniqueDerivedFiles(file.DerivedFiles)
+				for _, df := range children {
 					if err := web.Rescan(df.SHA256, token, osFlag, enableDetonationFlag, timeoutFlag); err != nil {
 						return fileUploadedMsg{index: index, err: fmt.Errorf("rescan child %s: %w", df.SHA256[:12], err)}
 					}
 				}
 				return fileUploadedMsg{
-					index:     index,
-					sha256:    sha256,
-					size:      file.Size,
-					isArchive: true,
-					children:  file.DerivedFiles,
+					index:      index,
+					sha256:     sha256,
+					size:       file.Size,
+					isArchive:  true,
+					children:   children,
+					childDupes: len(file.DerivedFiles) - len(children),
 				}
 			}
 
@@ -158,11 +163,13 @@ func fetchResultCmd(index int, web webapi.Service, sha256 string) tea.Cmd {
 		if err := web.GetFile(sha256, &file); err != nil {
 			return fileScanDoneMsg{index: index, err: fmt.Errorf("get file report: %w", err)}
 		}
+		children := uniqueDerivedFiles(file.DerivedFiles)
 		return fileScanDoneMsg{
-			index:     index,
-			summary:   buildScanSummary(file),
-			isArchive: file.IsArchive,
-			children:  file.DerivedFiles,
+			index:      index,
+			summary:    buildScanSummary(file),
+			isArchive:  file.IsArchive,
+			children:   children,
+			childDupes: len(file.DerivedFiles) - len(children),
 		}
 	}
 }
@@ -186,17 +193,19 @@ func rescanFileCmd(index int, web webapi.Service, sha256, token string) tea.Cmd 
 		}
 
 		if file.IsArchive && len(file.DerivedFiles) > 0 {
-			for _, df := range file.DerivedFiles {
+			children := uniqueDerivedFiles(file.DerivedFiles)
+			for _, df := range children {
 				if err := web.Rescan(df.SHA256, token, osFlag, enableDetonationFlag, timeoutFlag); err != nil {
 					return fileUploadedMsg{index: index, err: fmt.Errorf("rescan child %s: %w", df.SHA256[:12], err)}
 				}
 			}
 			return fileUploadedMsg{
-				index:     index,
-				sha256:    sha256,
-				size:      file.Size,
-				isArchive: true,
-				children:  file.DerivedFiles,
+				index:      index,
+				sha256:     sha256,
+				size:       file.Size,
+				isArchive:  true,
+				children:   children,
+				childDupes: len(file.DerivedFiles) - len(children),
 			}
 		}
 
@@ -315,6 +324,7 @@ func (m scanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.files[i].state = stateScanning
 			m.files[i].isArchive = true
 			m.files[i].childCount = len(msg.children)
+			m.files[i].childDupes = msg.childDupes
 			m.files[i].size = msg.size
 			cmds = append(cmds, pollStatusCmd(i, m.web, msg.sha256))
 
@@ -374,6 +384,7 @@ func (m scanModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if msg.isArchive && !m.files[i].isArchive && len(msg.children) > 0 {
 				m.files[i].isArchive = true
 				m.files[i].childCount = len(msg.children)
+				m.files[i].childDupes = msg.childDupes
 				archiveName := filepath.Base(m.files[i].filename)
 				for _, df := range msg.children {
 					s := spinner.New()
@@ -519,7 +530,12 @@ func (m scanModel) View() string {
 					size = f.result.Size
 				}
 				line += "  " + styleDim.Render(formatSize(size))
-				line += "  " + styleLabel.Render(fmt.Sprintf("archive (%d files)", f.childCount))
+				archiveLabel := fmt.Sprintf("archive (%d files)", f.childCount)
+				if f.childDupes > 0 {
+					archiveLabel = fmt.Sprintf("archive (%d files, %d duplicates)",
+						f.childCount+f.childDupes, f.childDupes)
+				}
+				line += "  " + styleLabel.Render(archiveLabel)
 			} else if f.result != nil {
 				line += "  " + styleDim.Render(formatSize(f.result.Size))
 				fmtStr := f.result.FileFormat
@@ -607,6 +623,23 @@ func childDisplayName(df entity.DerivedFile) string {
 	return truncSha(df.SHA256)
 }
 
+// uniqueDerivedFiles deduplicates derived files by SHA256, keeping the first
+// occurrence. An archive can contain identical files under different names;
+// the backend only scans each unique hash once, so tracking duplicates would
+// poll (or rescan) the same file twice.
+func uniqueDerivedFiles(dfs []entity.DerivedFile) []entity.DerivedFile {
+	seen := make(map[string]struct{}, len(dfs))
+	var unique []entity.DerivedFile
+	for _, df := range dfs {
+		if _, dup := seen[df.SHA256]; dup {
+			continue
+		}
+		seen[df.SHA256] = struct{}{}
+		unique = append(unique, df)
+	}
+	return unique
+}
+
 func renderEncryptionStatus(s *scanSummary) string {
 	if s.DecryptionSuccess == nil {
 		return "  " + styleWarning.Render("encrypted")
@@ -624,4 +657,3 @@ func renderEncryptionStatus(s *scanSummary) string {
 	}
 	return out
 }
-
