@@ -6,7 +6,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"sort"
 	"strings"
 	"time"
@@ -22,16 +21,17 @@ var viewCmd = &cobra.Command{
 	Short: "View scan results for a file by its SHA256 hash",
 	Long:  `Fetches and displays the scan results summary for a file, including AV detections.`,
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		sha256 := strings.ToLower(args[0])
 
 		webSvc := webapi.New(cfg.Credentials.URL)
 		var file entity.File
 		if err := webSvc.GetFile(sha256, &file); err != nil {
-			log.Fatalf("failed to get file: %v", err)
+			return fmt.Errorf("failed to get file: %w", err)
 		}
 
 		printFileReport(file, webSvc)
+		return nil
 	},
 }
 

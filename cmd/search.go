@@ -6,7 +6,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -30,13 +29,14 @@ Examples:
   saferwall-cli search 'fs>2026 and tag=upx' --per-page 50
   saferwall-cli search 'extension=sys and positives>=10' --page 2`,
 	Args: cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		webSvc := webapi.New(cfg.Credentials.URL)
 		result, err := webSvc.SearchFiles(args[0], cfg.Credentials.APIKey, searchPage, searchPerPage)
 		if err != nil {
-			log.Fatalf("search failed: %v", err)
+			return err
 		}
 		printSearchResults(result, searchPage, searchPerPage)
+		return nil
 	},
 }
 

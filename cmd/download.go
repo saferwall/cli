@@ -6,9 +6,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"path/filepath"
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -21,13 +18,8 @@ var outputFlag string
 var extractFlag bool
 
 func init() {
-	ex, err := os.Executable()
-	if err != nil {
-		panic(err)
-	}
-
-	downloadCmd.Flags().StringVarP(&outputFlag, "output", "o", filepath.Dir(ex),
-		"Destination directory where to save samples. (default=current dir)")
+	downloadCmd.Flags().StringVarP(&outputFlag, "output", "o", ".",
+		"Destination directory where to save samples")
 	downloadCmd.Flags().IntVarP(&parallelFlag, "parallel", "p", 4,
 		"Number of files to download in parallel")
 	downloadCmd.Flags().BoolVarP(&extractFlag, "extract", "x", false,
@@ -39,30 +31,33 @@ var downloadCmd = &cobra.Command{
 	Short: "Download a sample (and its artifacts)",
 	Long:  `Download a binary sample given a SHA256 hash, or a batch of samples from a text file containing one hash per line.`,
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		arg := args[0]
 
 		webSvc := webapi.New(cfg.Credentials.URL)
-		hashes := collectHashes(arg)
+		hashes, err := collectHashes(arg)
+		if err != nil {
+			return err
+		}
 		if len(hashes) == 0 {
-			log.Fatalf("no valid SHA256 hashes found in %q", arg)
+			return fmt.Errorf("no valid SHA256 hashes found in %q", arg)
 		}
 
-		downloadFiles(webSvc, cfg.Credentials.APIKey, hashes)
+		return downloadFiles(webSvc, cfg.Credentials.APIKey, hashes)
 	},
 }
 
 // collectHashes returns a list of SHA256 hashes from the argument.
 // If arg is a SHA256 hash, it returns a single-element slice.
 // Otherwise it treats arg as a file path and reads hashes from it.
-func collectHashes(arg string) []string {
+func collectHashes(arg string) ([]string, error) {
 	if sha256Re.MatchString(arg) {
-		return []string{arg}
+		return []string{arg}, nil
 	}
 
 	data, err := util.ReadAll(arg)
 	if err != nil {
-		log.Fatalf("failed to read SHA256 hashes from file: %s", arg)
+		return nil, fmt.Errorf("failed to read SHA256 hashes from file %s: %w", arg, err)
 	}
 
 	var hashes []string
@@ -72,14 +67,14 @@ func collectHashes(arg string) []string {
 			hashes = append(hashes, line)
 		}
 	}
-	return hashes
+	return hashes, nil
 }
 
-func downloadFiles(web webapi.Service, token string, hashes []string) {
+func downloadFiles(web webapi.Service, token string, hashes []string) error {
 	model := newDownloadModel(hashes, web, token, outputFlag, parallelFlag, extractFlag)
 	p := tea.NewProgram(model)
 	if _, err := p.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "TUI error: %v\n", err)
-		os.Exit(1)
+		return fmt.Errorf("TUI error: %w", err)
 	}
+	return nil
 }

@@ -35,6 +35,8 @@ For more details see the github repo at https://github.com/saferwall
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
+	// Runtime errors are reported by Execute; don't dump usage on top of them.
+	SilenceUsage: true,
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
 		// Skip config loading for the init command.
 		if cmd.Name() == "init" {
