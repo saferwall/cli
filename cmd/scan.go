@@ -17,8 +17,6 @@ import (
 )
 
 const (
-	statusQueued    = 1
-	statusScanning  = 2
 	statusCompleted = 3
 
 	pollInterval = 5 * time.Second
