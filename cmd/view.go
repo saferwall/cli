@@ -771,7 +771,7 @@ func printBehaviorRunsTable(reports map[string]entity.BehaviorReportSummary, sel
 		return runs[i].id > runs[j].id
 	})
 
-	osCol := lipgloss.NewStyle().Width(16)
+	osCol := lipgloss.NewStyle().Width(30)
 	timeCol := lipgloss.NewStyle().Width(24)
 	durCol := lipgloss.NewStyle().Width(9)
 	rulesCol := lipgloss.NewStyle().Width(6)
@@ -782,7 +782,7 @@ func printBehaviorRunsTable(reports map[string]entity.BehaviorReportSummary, sel
 	fmt.Printf("    %s  %s %s %s %s %s %s %s %s\n",
 		styleDim.Render(fmt.Sprintf("%-36s", "ID")),
 		styleDim.Render(fmt.Sprintf("%-10s", "STATUS")),
-		styleDim.Render(osCol.Render("OS")),
+		styleDim.Render(osCol.Render("OS/PROFILE")),
 		styleDim.Render(timeCol.Render("TIME")),
 		styleDim.Render(durCol.Render("DURATION")),
 		styleDim.Render(rulesCol.Render("RULES")),
@@ -790,7 +790,7 @@ func printBehaviorRunsTable(reports map[string]entity.BehaviorReportSummary, sel
 		styleDim.Render(shotsCol.Render("SHOTS")),
 		styleDim.Render("FAILURE"),
 	)
-	fmt.Printf("    %s\n", styleDim.Render(strings.Repeat("─", 130)))
+	fmt.Printf("    %s\n", styleDim.Render(strings.Repeat("─", 144)))
 
 	for _, r := range runs {
 		marker := " "
@@ -798,7 +798,12 @@ func printBehaviorRunsTable(reports map[string]entity.BehaviorReportSummary, sel
 			marker = titleStyle.Render("▸")
 		}
 
+		// The sandbox pipeline resolves the requested OS into a digest-bound
+		// guest profile; older events may carry only one of the two.
 		osName := r.sum.ScanConfig.OS
+		if osName == "" {
+			osName = r.sum.ScanConfig.ProfileID
+		}
 		if osName == "" {
 			osName = "-"
 		}
