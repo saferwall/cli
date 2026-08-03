@@ -146,4 +146,3 @@ func printSearchResults(result *webapi.SearchResult, page, perPage int) {
 		)
 	}
 }
-
