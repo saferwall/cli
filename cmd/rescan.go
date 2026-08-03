@@ -22,7 +22,7 @@ func init() {
 		"Number of files to rescan in parallel")
 	reScanCmd.Flags().BoolVarP(&enableDetonationFlag, "enableDetonation", "d", false,
 		"Enable sandbox detonation (skipped by default)")
-	reScanCmd.Flags().IntVarP(&timeoutFlag, "timeout", "t", 15,
+	reScanCmd.Flags().IntVarP(&timeoutFlag, "timeout", "t", defaultDetonationTimeout,
 		"Detonation duration in seconds")
 	reScanCmd.Flags().StringVarP(&osFlag, "os", "o", "windows-10-x64",
 		"Preferred OS for detonation, choice(windows-7-x64 | windows-10-x64 | windows-11-x64)")
