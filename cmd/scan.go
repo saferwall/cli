@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	statusCompleted = 3
+	statusCompleted          = 3
+	defaultDetonationTimeout = 30
 
 	pollInterval = 5 * time.Second
 )
@@ -36,7 +37,7 @@ func init() {
 		"Number of files to scan in parallel")
 	scanCmd.Flags().BoolVarP(&enableDetonationFlag, "enableDetonation", "d", false,
 		"Enable sandbox detonation (skipped by default)")
-	scanCmd.Flags().IntVarP(&timeoutFlag, "timeout", "t", 15,
+	scanCmd.Flags().IntVarP(&timeoutFlag, "timeout", "t", defaultDetonationTimeout,
 		"Detonation duration in seconds")
 	scanCmd.Flags().StringVarP(&osFlag, "os", "o", "windows-10-x64",
 		"Preferred OS for detonation, choice(windows-7-x64 | windows-10-x64 | windows-11-x64)")

@@ -65,7 +65,7 @@ saferwall-cli scan -d -t 30 -o windows-10-x64 /path/to/sample
 | `--force` | `-f` | `false` | Force rescan if the file already exists |
 | `--parallel` | `-p` | `1` | Number of files to scan in parallel |
 | `--enableDetonation` | `-d` | `false` | Enable detonation (dynamic analysis) |
-| `--timeout` | `-t` | `15` | Detonation duration in seconds |
+| `--timeout` | `-t` | `30` | Detonation duration in seconds |
 | `--os` | `-o` | `windows-10-x64` | Preferred OS for detonation (`windows-7-x64`, `windows-10-x64`, or `windows-11-x64`) |
 
 ### Rescan
