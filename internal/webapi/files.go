@@ -162,10 +162,8 @@ func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation 
 
 	requestBody, err := json.Marshal(map[string]any{
 		"skip_detonation": !enableDetonation,
-		"scan_cfg": map[string]any{
-			"os":      preferredOS,
-			"timeout": timeout,
-		},
+		"os":              preferredOS,
+		"timeout":         timeout,
 	})
 	if err != nil {
 		return err
@@ -303,16 +301,16 @@ func (s Service) Delete(sha256, authToken string) error {
 
 // SearchItem is the flattened file representation returned by the search endpoint.
 type SearchItem struct {
-	ID            string         `json:"id"`
-	Name          string         `json:"name"`
-	Format        string         `json:"file_format"`
-	Extension     string         `json:"file_extension"`
-	Size          int64          `json:"size"`
-	FirstSeen     int64          `json:"first_seen"`
-	LastScanned   int64          `json:"last_scanned"`
-	Classification string        `json:"class"`
-	MultiAV       SearchMultiAV  `json:"multiav"`
-	Tags          map[string]any `json:"tags"`
+	ID             string         `json:"id"`
+	Name           string         `json:"name"`
+	Format         string         `json:"file_format"`
+	Extension      string         `json:"file_extension"`
+	Size           int64          `json:"size"`
+	FirstSeen      int64          `json:"first_seen"`
+	LastScanned    int64          `json:"last_scanned"`
+	Classification string         `json:"class"`
+	MultiAV        SearchMultiAV  `json:"multiav"`
+	Tags           map[string]any `json:"tags"`
 }
 
 // SearchMultiAV holds the condensed AV stats returned in search results.

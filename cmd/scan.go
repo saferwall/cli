@@ -38,11 +38,11 @@ func init() {
 	scanCmd.Flags().IntVarP(&parallelFlag, "parallel", "p", 1,
 		"Number of files to scan in parallel")
 	scanCmd.Flags().BoolVarP(&enableDetonationFlag, "enableDetonation", "d", false,
-		"Skip detonation")
+		"Enable sandbox detonation (skipped by default)")
 	scanCmd.Flags().IntVarP(&timeoutFlag, "timeout", "t", 15,
 		"Detonation duration in seconds")
-	scanCmd.Flags().StringVarP(&osFlag, "os", "o", "win-10",
-		"Preferred OS for detonation, choice(win-7 | win-10)")
+	scanCmd.Flags().StringVarP(&osFlag, "os", "o", "windows-10-x64",
+		"Preferred OS for detonation, choice(windows-7-x64 | windows-10-x64 | windows-11-x64)")
 }
 
 type scanSummary struct {

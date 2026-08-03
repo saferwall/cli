@@ -22,11 +22,11 @@ func init() {
 	reScanCmd.Flags().IntVar(&parallelFlag, "parallel", 1,
 		"Number of files to rescan in parallel")
 	reScanCmd.Flags().BoolVarP(&enableDetonationFlag, "enableDetonation", "d", false,
-		"Skip detonation")
+		"Enable sandbox detonation (skipped by default)")
 	reScanCmd.Flags().IntVarP(&timeoutFlag, "timeout", "t", 15,
 		"Detonation duration in seconds")
-	reScanCmd.Flags().StringVarP(&osFlag, "os", "o", "win-10",
-		"Preferred OS for detonation, choice(win-7 | win-10)")
+	reScanCmd.Flags().StringVarP(&osFlag, "os", "o", "windows-10-x64",
+		"Preferred OS for detonation, choice(windows-7-x64 | windows-10-x64 | windows-11-x64)")
 }
 
 // reScanFile re-scans a list of SHA256 with a TUI progress display.
