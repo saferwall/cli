@@ -10,7 +10,6 @@ import (
 )
 
 const (
-	usersEndpoint = "/v1/users/"
 	filesEndpoint = "/v1/files/"
 
 	defaultTimeout = 5 * time.Minute
@@ -18,16 +17,13 @@ const (
 
 type Service struct {
 	filesURL string
-	usersURL string
 	client   *http.Client
 }
 
 // New generates new web apis service object.
 func New(baseURL string) Service {
-	s := Service{
-		client: &http.Client{Timeout: defaultTimeout},
+	return Service{
+		client:   &http.Client{Timeout: defaultTimeout},
+		filesURL: baseURL + filesEndpoint,
 	}
-	s.usersURL = baseURL + usersEndpoint
-	s.filesURL = baseURL + filesEndpoint
-	return s
 }

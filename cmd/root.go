@@ -43,7 +43,7 @@ For more details see the github repo at https://github.com/saferwall
 			return nil
 		}
 		cfgFilePath := filepath.Join(util.UserHomeDir(), ".config", "saferwall")
-		if err := config.Load(cfgFilePath, "", &cfg); err != nil {
+		if err := config.Load(cfgFilePath, &cfg); err != nil {
 			return fmt.Errorf("failed loading CLI config: %v\nRun 'saferwall-cli init' to configure", err)
 		}
 		return nil
