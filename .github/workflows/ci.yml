@@ -23,3 +23,9 @@ jobs:
         run: |
           go env -w GOFLAGS=-mod=mod
           go build -v ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test -race -v ./...
