@@ -6,13 +6,12 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"os"
-	"path/filepath"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/saferwall/cli/internal/entity"
+	"github.com/saferwall/cli/internal/util"
 	"github.com/saferwall/cli/internal/webapi"
 	"github.com/spf13/cobra"
 )
@@ -94,20 +93,18 @@ func buildScanSummary(file entity.File) scanSummary {
 
 // scanFile scans an individual file or a directory.
 func scanFile(web webapi.Service, filePath, token string) error {
-	_, err := os.Stat(filePath)
-	if os.IsNotExist(err) {
-		log.Printf("file path [%s] does not exists", filePath)
-		return err
+	if _, err := os.Stat(filePath); err != nil {
+		return fmt.Errorf("cannot access %s: %w", filePath, err)
 	}
 
-	// Walk over directory.
-	fileList := []string{}
-	filepath.Walk(filePath, func(path string, f os.FileInfo, err error) error {
-		if !f.IsDir() {
-			fileList = append(fileList, path)
-		}
-		return nil
-	})
+	// Walk over the file or directory.
+	fileList, err := util.WalkAllFilesInDir(filePath)
+	if err != nil {
+		return fmt.Errorf("failed walking %s: %w", filePath, err)
+	}
+	if len(fileList) == 0 {
+		return fmt.Errorf("no files found in %s", filePath)
+	}
 
 	// Launch TUI scan with the configured parallelism.
 	model := newScanModel(fileList, web, token, parallelFlag)
@@ -123,9 +120,8 @@ var scanCmd = &cobra.Command{
 	Short: "Submit a scan request of a file using its hash",
 	Long:  `Scans the file`,
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-
+	RunE: func(cmd *cobra.Command, args []string) error {
 		webSvc := webapi.New(cfg.Credentials.URL)
-		scanFile(webSvc, args[0], cfg.Credentials.APIKey)
+		return scanFile(webSvc, args[0], cfg.Credentials.APIKey)
 	},
 }

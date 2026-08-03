@@ -36,9 +36,8 @@ var genCmd = &cobra.Command{
 	Short: "Generate malware souk markdown for the entire corpus",
 	Long: `Generates markdown source code for the entire corpus of
 saferwall's malware souk database`,
-	Run: func(cmd *cobra.Command, args []string) {
-
-		generateMalwareSoukDB()
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return generateMalwareSoukDB()
 	},
 }
 
@@ -47,9 +46,9 @@ var addCmd = &cobra.Command{
 	Short: "Add a new malware family to the malware souk database",
 	Long: `Generates markdown source code for a new malware family for
 saferwall's malware souk database`,
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		familyYamlPath := filepath.Join(soukFlag, familyYamlFlag)
-		addFamilyToSouk(familyYamlPath)
+		return addFamilyToSouk(familyYamlPath)
 	},
 }
 

@@ -6,7 +6,6 @@ package cmd
 
 import (
 	"fmt"
-	"log"
 	"regexp"
 	"strings"
 
@@ -44,8 +43,7 @@ var reScanCmd = &cobra.Command{
 	Short: "Rescan an existing file using its hash",
 	Long:  `Rescans one or more files. Pass a SHA256 hash to rescan a single file, or a path to a text file with one hash per line to rescan in batch.`,
 	Args:  cobra.ExactArgs(1),
-	Run: func(cmd *cobra.Command, args []string) {
-
+	RunE: func(cmd *cobra.Command, args []string) error {
 		webSvc := webapi.New(cfg.Credentials.URL)
 		arg := args[0]
 
@@ -55,7 +53,7 @@ var reScanCmd = &cobra.Command{
 		} else {
 			data, err := util.ReadAll(arg)
 			if err != nil {
-				log.Fatalf("failed to read file: %s", arg)
+				return fmt.Errorf("failed to read file %s: %w", arg, err)
 			}
 			for _, line := range strings.Split(string(data), "\n") {
 				line = strings.TrimSpace(line)
@@ -65,6 +63,6 @@ var reScanCmd = &cobra.Command{
 			}
 		}
 
-		reScanFile(webSvc, sha256List, cfg.Credentials.APIKey)
+		return reScanFile(webSvc, sha256List, cfg.Credentials.APIKey)
 	},
 }

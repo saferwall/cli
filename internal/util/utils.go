@@ -22,27 +22,7 @@ func GetSha256(b []byte) string {
 
 // ReadAll reads the entire file into memory.
 func ReadAll(filePath string) ([]byte, error) {
-	// Start by getting a file descriptor over the file
-	file, err := os.Open(filePath)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	// Get the file size to know how much we need to allocate
-	fileinfo, err := file.Stat()
-	if err != nil {
-		return nil, err
-	}
-	filesize := fileinfo.Size()
-	buffer := make([]byte, filesize)
-
-	// Read the whole binary
-	_, err = file.Read(buffer)
-	if err != nil {
-		return nil, err
-	}
-	return buffer, nil
+	return os.ReadFile(filePath)
 }
 
 // WriteBytesFile write Bytes to a File.

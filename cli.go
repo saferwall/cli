@@ -5,6 +5,8 @@
 package main
 
 import (
+	"os"
+
 	"github.com/saferwall/cli/cmd"
 )
 
@@ -16,5 +18,7 @@ var (
 
 func main() {
 	cmd.SetVersionInfo(version, commit, date)
-	cmd.Execute()
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }

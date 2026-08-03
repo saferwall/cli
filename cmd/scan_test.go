@@ -92,9 +92,18 @@ func TestSha256Re(t *testing.T) {
 }
 
 func TestCollectHashesSingleHash(t *testing.T) {
-	got := collectHashes(testHash)
+	got, err := collectHashes(testHash)
+	if err != nil {
+		t.Fatalf("collectHashes() error = %v", err)
+	}
 	if !reflect.DeepEqual(got, []string{testHash}) {
 		t.Errorf("collectHashes() = %v, want [%s]", got, testHash)
+	}
+}
+
+func TestCollectHashesMissingFile(t *testing.T) {
+	if _, err := collectHashes(filepath.Join(t.TempDir(), "nope.txt")); err == nil {
+		t.Error("collectHashes() expected error for unreadable file, got nil")
 	}
 }
 
@@ -109,7 +118,10 @@ func TestCollectHashesFromFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	got := collectHashes(path)
+	got, err := collectHashes(path)
+	if err != nil {
+		t.Fatalf("collectHashes() error = %v", err)
+	}
 	want := []string{testHash, other}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("collectHashes() = %v, want %v", got, want)
