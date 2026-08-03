@@ -57,7 +57,7 @@ saferwall-cli scan -p 4 /path/to/directory
 saferwall-cli scan -f /path/to/sample
 
 # Enable detonation with custom timeout and OS
-saferwall-cli scan -d -t 30 -o win-7 /path/to/sample
+saferwall-cli scan -d -t 30 -o windows-10-x64 /path/to/sample
 ```
 
 | Flag | Short | Default | Description |
@@ -66,7 +66,7 @@ saferwall-cli scan -d -t 30 -o win-7 /path/to/sample
 | `--parallel` | `-p` | `1` | Number of files to scan in parallel |
 | `--enableDetonation` | `-d` | `false` | Enable detonation (dynamic analysis) |
 | `--timeout` | `-t` | `15` | Detonation duration in seconds |
-| `--os` | `-o` | `win-10` | Preferred OS for detonation (`win-7` or `win-10`) |
+| `--os` | `-o` | `windows-10-x64` | Preferred OS for detonation (`windows-7-x64`, `windows-10-x64`, or `windows-11-x64`) |
 
 ### Rescan
 
