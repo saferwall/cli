@@ -463,13 +463,13 @@ func printDynamicAnalysis(file entity.File, webSvc webapi.Service, requestedID s
 		return nil
 	}
 
+	printBehaviorRunsTable(file.BehaviorReports, selectedID)
+
 	if selectedID != "" {
 		sum := file.BehaviorReports[selectedID]
 		detail := fetchBehaviorDetail(webSvc, selectedID)
 		printBehaviorRunDetail(selectedID, sum, detail)
 	}
-
-	printOtherBehaviorRuns(file.BehaviorReports, selectedID)
 	return nil
 }
 
@@ -502,11 +502,7 @@ func renderPaddedBehaviorStatus(status string) string {
 // printBehaviorRunDetail renders the selected run: environment, evidence,
 // capabilities, process tree and activity counts.
 func printBehaviorRunDetail(id string, sum entity.BehaviorReportSummary, d behaviorDetail) {
-	printKV("Report ID", id)
-	printKV("Status", renderBehaviorStatus(sum.Status))
-	if sum.ScanConfig.OS != "" {
-		printKV("OS", sum.ScanConfig.OS)
-	}
+	printKV("Report ID", id+" "+renderBehaviorStatus("("+sum.Status+")"))
 	if sum.ScanConfig.Country != "" {
 		printKV("Country", sum.ScanConfig.Country)
 	}
@@ -516,15 +512,6 @@ func printBehaviorRunDetail(id string, sum entity.BehaviorReportSummary, d behav
 			sandbox += styleDim.Render(" (guest healthy)")
 		}
 		printKV("Sandbox", sandbox)
-	}
-	if sum.StartedAt != 0 {
-		printKV("Started", formatTimestamp(sum.StartedAt))
-	}
-	if sum.FinishedAt != 0 {
-		printKV("Finished", formatTimestamp(sum.FinishedAt))
-	}
-	if sum.FinishedAt > sum.StartedAt && sum.StartedAt != 0 {
-		printKV("Duration", (time.Duration(sum.FinishedAt-sum.StartedAt) * time.Second).String())
 	}
 	if sum.AttemptCount > 1 {
 		printKV("Attempts", fmt.Sprintf("%d", sum.AttemptCount))
@@ -756,46 +743,89 @@ func printProcessTree(procs []entity.Process) {
 	fmt.Println()
 }
 
-// printOtherBehaviorRuns lists the remaining runs as one-liners, newest first.
-func printOtherBehaviorRuns(reports map[string]entity.BehaviorReportSummary, selectedID string) {
+// behaviorRunDuration formats the wall-clock duration of a run, or "-" when
+// timing data is incomplete.
+func behaviorRunDuration(sum entity.BehaviorReportSummary) string {
+	if sum.FinishedAt > sum.StartedAt && sum.StartedAt != 0 {
+		return (time.Duration(sum.FinishedAt-sum.StartedAt) * time.Second).String()
+	}
+	return "-"
+}
+
+// printBehaviorRunsTable lists every sandbox run of the file, newest first.
+// The run displayed in detail below is marked with ▸.
+func printBehaviorRunsTable(reports map[string]entity.BehaviorReportSummary, selectedID string) {
 	type run struct {
 		id  string
 		sum entity.BehaviorReportSummary
 	}
-	var others []run
+	runs := make([]run, 0, len(reports))
 	for id, sum := range reports {
-		if id == selectedID {
-			continue
-		}
-		others = append(others, run{id: id, sum: sum})
+		runs = append(runs, run{id: id, sum: sum})
 	}
-	if len(others) == 0 {
-		return
-	}
-
-	sort.Slice(others, func(i, j int) bool {
-		ti, tj := behaviorRunTime(others[i].sum), behaviorRunTime(others[j].sum)
+	sort.Slice(runs, func(i, j int) bool {
+		ti, tj := behaviorRunTime(runs[i].sum), behaviorRunTime(runs[j].sum)
 		if ti != tj {
 			return ti > tj
 		}
-		return others[i].id > others[j].id
+		return runs[i].id > runs[j].id
 	})
 
-	fmt.Println(headerStyle.Render(fmt.Sprintf("Other Runs (%d)", len(others))))
-	for _, r := range others {
-		line := fmt.Sprintf("  %s %s", r.id, renderPaddedBehaviorStatus(r.sum.Status))
-		if r.sum.ScanConfig.OS != "" {
-			line += " " + r.sum.ScanConfig.OS
+	osCol := lipgloss.NewStyle().Width(16)
+	timeCol := lipgloss.NewStyle().Width(24)
+	durCol := lipgloss.NewStyle().Width(9)
+	rulesCol := lipgloss.NewStyle().Width(6)
+	artCol := lipgloss.NewStyle().Width(10)
+	shotsCol := lipgloss.NewStyle().Width(6)
+
+	fmt.Println(headerStyle.Render(fmt.Sprintf("Sandbox Runs (%d)", len(runs))))
+	fmt.Printf("    %s  %s %s %s %s %s %s %s %s\n",
+		styleDim.Render(fmt.Sprintf("%-36s", "ID")),
+		styleDim.Render(fmt.Sprintf("%-10s", "STATUS")),
+		styleDim.Render(osCol.Render("OS")),
+		styleDim.Render(timeCol.Render("TIME")),
+		styleDim.Render(durCol.Render("DURATION")),
+		styleDim.Render(rulesCol.Render("RULES")),
+		styleDim.Render(artCol.Render("ARTIFACTS")),
+		styleDim.Render(shotsCol.Render("SHOTS")),
+		styleDim.Render("FAILURE"),
+	)
+	fmt.Printf("    %s\n", styleDim.Render(strings.Repeat("─", 130)))
+
+	for _, r := range runs {
+		marker := " "
+		if r.id == selectedID {
+			marker = titleStyle.Render("▸")
 		}
+
+		osName := r.sum.ScanConfig.OS
+		if osName == "" {
+			osName = "-"
+		}
+		runTime := "-"
 		if ts := behaviorRunTime(r.sum); ts != 0 {
-			line += " " + styleDim.Render(formatTimestamp(ts))
+			runTime = formatTimestamp(ts)
 		}
-		line += fmt.Sprintf(" rules:%d", r.sum.Evidence.TotalRules)
+		failure := ""
 		if r.sum.Failure != nil {
-			line += " " + styleDim.Render(r.sum.Failure.Class)
+			failure = detectStyle.Render(r.sum.Failure.Class)
 		}
-		fmt.Println(line)
+
+		fmt.Printf("  %s %s  %s %s %s %s %s %s %s %s\n",
+			marker,
+			r.id,
+			renderPaddedBehaviorStatus(r.sum.Status),
+			osCol.Render(osName),
+			timeCol.Render(runTime),
+			durCol.Render(behaviorRunDuration(r.sum)),
+			rulesCol.Render(fmt.Sprintf("%d", r.sum.Evidence.TotalRules)),
+			artCol.Render(fmt.Sprintf("%d", r.sum.ArtifactCount)),
+			shotsCol.Render(fmt.Sprintf("%d", r.sum.ScreenshotsCount)),
+			failure,
+		)
 	}
-	fmt.Println("  " + styleDim.Render("Use --behavior-id <id> to view a specific run."))
+	if len(runs) > 1 {
+		fmt.Println("    " + styleDim.Render("Use --behavior-id <id> to view a specific run."))
+	}
 	fmt.Println()
 }
