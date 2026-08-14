@@ -123,7 +123,8 @@ func uploadFileCmd(index int, web webapi.Service, filename, token string) tea.Cm
 				// Archive: rescan each unique child, not the container itself.
 				children := uniqueDerivedFiles(file.DerivedFiles)
 				for _, df := range children {
-					if err := web.Rescan(df.SHA256, token, osFlag, enableDetonationFlag, timeoutFlag); err != nil {
+					if err := web.Rescan(df.SHA256, token, osFlag, enableDetonationFlag, timeoutFlag,
+						rescanNetworkEnabled, rescanCountry); err != nil {
 						return fileUploadedMsg{index: index, err: fmt.Errorf("rescan child %s: %w", df.SHA256[:12], err)}
 					}
 				}
@@ -137,7 +138,8 @@ func uploadFileCmd(index int, web webapi.Service, filename, token string) tea.Cm
 				}
 			}
 
-			err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
+			err = web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag,
+				rescanNetworkEnabled, rescanCountry)
 			if err != nil {
 				return fileUploadedMsg{index: index, err: fmt.Errorf("rescan: %w", err)}
 			}
@@ -195,7 +197,8 @@ func rescanFileCmd(index int, web webapi.Service, sha256, token string) tea.Cmd 
 		if file.IsArchive && len(file.DerivedFiles) > 0 {
 			children := uniqueDerivedFiles(file.DerivedFiles)
 			for _, df := range children {
-				if err := web.Rescan(df.SHA256, token, osFlag, enableDetonationFlag, timeoutFlag); err != nil {
+				if err := web.Rescan(df.SHA256, token, osFlag, enableDetonationFlag, timeoutFlag,
+					rescanNetworkEnabled, rescanCountry); err != nil {
 					return fileUploadedMsg{index: index, err: fmt.Errorf("rescan child %s: %w", df.SHA256[:12], err)}
 				}
 			}
@@ -209,7 +212,8 @@ func rescanFileCmd(index int, web webapi.Service, sha256, token string) tea.Cmd 
 			}
 		}
 
-		err := web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag)
+		err := web.Rescan(sha256, token, osFlag, enableDetonationFlag, timeoutFlag,
+			rescanNetworkEnabled, rescanCountry)
 		if err != nil {
 			return fileUploadedMsg{index: index, err: fmt.Errorf("rescan: %w", err)}
 		}
