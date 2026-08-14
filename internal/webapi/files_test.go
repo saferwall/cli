@@ -119,7 +119,8 @@ func TestRescan(t *testing.T) {
 	defer srv.Close()
 
 	svc := New(srv.URL)
-	if err := svc.Rescan(testSHA256, testAPIKey, "windows-7-x64", false, 60); err != nil {
+	if err := svc.Rescan(testSHA256, testAPIKey, "windows-7-x64", false, 60,
+		true, "US"); err != nil {
 		t.Fatalf("Rescan() error = %v", err)
 	}
 
@@ -132,6 +133,12 @@ func TestRescan(t *testing.T) {
 	if got := gotBody["timeout"]; got != float64(60) {
 		t.Errorf("timeout = %v, want 60", got)
 	}
+	if got := gotBody["network_enabled"]; got != true {
+		t.Errorf("network_enabled = %v, want true", got)
+	}
+	if got := gotBody["country"]; got != "US" {
+		t.Errorf("country = %v, want US", got)
+	}
 }
 
 func TestRescanError(t *testing.T) {
@@ -142,7 +149,8 @@ func TestRescanError(t *testing.T) {
 	defer srv.Close()
 
 	svc := New(srv.URL)
-	err := svc.Rescan(testSHA256, testAPIKey, "windows-10-x64", false, 15)
+	err := svc.Rescan(testSHA256, testAPIKey, "windows-10-x64", false, 15,
+		false, "")
 	if err == nil {
 		t.Fatal("Rescan() expected error on HTTP 404, got nil")
 	}

@@ -17,6 +17,11 @@ import (
 
 var sha256Re = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 
+var (
+	rescanNetworkEnabled bool
+	rescanCountry        string
+)
+
 func init() {
 	reScanCmd.Flags().IntVar(&parallelFlag, "parallel", 1,
 		"Number of files to rescan in parallel")
@@ -26,6 +31,10 @@ func init() {
 		"Detonation duration in seconds")
 	reScanCmd.Flags().StringVarP(&osFlag, "os", "o", "windows-10-x64",
 		"Preferred OS for detonation, choice(windows-7-x64 | windows-10-x64 | windows-11-x64)")
+	reScanCmd.Flags().BoolVar(&rescanNetworkEnabled, "network", true,
+		"Allow sandbox internet access")
+	reScanCmd.Flags().StringVar(&rescanCountry, "country", "US",
+		"Two-letter VPN exit country when network access is enabled")
 }
 
 // reScanFile re-scans a list of SHA256 with a TUI progress display.
