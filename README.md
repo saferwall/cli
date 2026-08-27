@@ -74,7 +74,17 @@ Rescan an existing file by its SHA256 hash, or rescan a batch of hashes from a t
 
 ```sh
 saferwall-cli rescan <sha256>
+
+# Run a command-line utility with the inputs it requires
+saferwall-cli rescan -d --country FI \
+  --dest-path 'C:\\Users\\Public\\GodPotato.exe' \
+  --args '-cmd "cmd /c whoami"' <sha256>
 ```
+
+`--args` and `--dest-path` apply to a directly rescanned sample. For archive
+containers, the CLI intentionally omits those overrides when rescanning
+extracted children because one container-level command line or path cannot be
+safely assigned to every child.
 
 ### View
 

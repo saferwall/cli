@@ -167,16 +167,23 @@ func (s Service) Scan(filepath string, authToken, preferredOS string, enableDeto
 }
 
 func (s Service) Rescan(sha256, authToken, preferredOS string, enableDetonation bool,
-	timeout int, networkEnabled bool, country string) error {
+	timeout int, networkEnabled bool, country, destPath, arguments string) error {
 	url := s.filesURL + sha256 + "/rescan"
 
-	requestBody, err := json.Marshal(map[string]any{
+	params := map[string]any{
 		"skip_detonation": !enableDetonation,
 		"os":              preferredOS,
 		"timeout":         timeout,
 		"network_enabled": networkEnabled,
 		"country":         country,
-	})
+	}
+	if destPath != "" {
+		params["dest_path"] = destPath
+	}
+	if arguments != "" {
+		params["args"] = arguments
+	}
+	requestBody, err := json.Marshal(params)
 	if err != nil {
 		return err
 	}

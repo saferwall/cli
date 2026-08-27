@@ -20,6 +20,8 @@ var sha256Re = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
 var (
 	rescanNetworkEnabled bool
 	rescanCountry        string
+	rescanDestPath       string
+	rescanArguments      string
 )
 
 func init() {
@@ -35,6 +37,10 @@ func init() {
 		"Allow sandbox internet access")
 	reScanCmd.Flags().StringVar(&rescanCountry, "country", "US",
 		"Two-letter VPN exit country when network access is enabled")
+	reScanCmd.Flags().StringVar(&rescanDestPath, "dest-path", "",
+		"Guest path where the sample should be staged")
+	reScanCmd.Flags().StringVar(&rescanArguments, "args", "",
+		"Command-line arguments passed to the sample")
 }
 
 // reScanFile re-scans a list of SHA256 with a TUI progress display.

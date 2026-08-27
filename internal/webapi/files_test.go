@@ -120,7 +120,8 @@ func TestRescan(t *testing.T) {
 
 	svc := New(srv.URL)
 	if err := svc.Rescan(testSHA256, testAPIKey, "windows-7-x64", false, 60,
-		true, "US"); err != nil {
+		true, "US", `C:\\Users\\Public\\tool.exe`,
+		`-cmd "cmd /c whoami"`); err != nil {
 		t.Fatalf("Rescan() error = %v", err)
 	}
 
@@ -139,6 +140,12 @@ func TestRescan(t *testing.T) {
 	if got := gotBody["country"]; got != "US" {
 		t.Errorf("country = %v, want US", got)
 	}
+	if got := gotBody["dest_path"]; got != `C:\\Users\\Public\\tool.exe` {
+		t.Errorf("dest_path = %v, want explicit guest path", got)
+	}
+	if got := gotBody["args"]; got != `-cmd "cmd /c whoami"` {
+		t.Errorf("args = %v, want explicit command line", got)
+	}
 }
 
 func TestRescanError(t *testing.T) {
@@ -150,7 +157,7 @@ func TestRescanError(t *testing.T) {
 
 	svc := New(srv.URL)
 	err := svc.Rescan(testSHA256, testAPIKey, "windows-10-x64", false, 15,
-		false, "")
+		false, "", "", "")
 	if err == nil {
 		t.Fatal("Rescan() expected error on HTTP 404, got nil")
 	}
